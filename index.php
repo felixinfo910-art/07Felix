@@ -1,0 +1,933 @@
+<?php
+require_once __DIR__ . '/config.php';
+$appTitle = getConfig('app_title', 'Felix 管理者工作台');
+$theme = getConfig('theme', 'notion');
+?>
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="<?php echo htmlspecialchars($theme); ?>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title><?php echo htmlspecialchars($appTitle); ?></title>
+  
+  <!-- PWA 支持：添加到手机主屏幕即为独立 App -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="管理工作台">
+  <meta name="theme-color" content="#F7F6F3">
+  
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div class="app-container">
+  <!-- 顶部主导航 -->
+  <header class="top-header">
+    <div class="brand-section">
+      <div class="brand-icon">📁</div>
+      <div class="brand-title" id="brandTitle"><?php echo htmlspecialchars($appTitle); ?></div>
+      <span class="brand-badge">Manager Hub</span>
+    </div>
+
+    <!-- 桌面端导航标签 -->
+    <nav class="nav-tabs">
+      <button class="nav-tab-btn active" data-tab="dashboard">
+        <span>📊</span><span>总览看板</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="projects">
+        <span>🚀</span><span>网站项目跳板</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="renewals">
+        <span>⏰</span><span>资产续费雷达</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="reimbursements">
+        <span>💳</span><span>垫资报销管家</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="tasks">
+        <span>📋</span><span>事务与待办</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="knowledge">
+        <span>🧠</span><span>AI 知识库</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="companies">
+        <span>🏢</span><span>公司主体</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="settings">
+        <span>⚙️</span><span>系统设置</span>
+      </button>
+    </nav>
+
+    <!-- 头部工具栏 -->
+    <div class="header-actions">
+      <!-- 全局搜索触发 -->
+      <button class="search-trigger-btn" onclick="App.openSearchModal()" title="快捷键 Ctrl+K">
+        <span>🔍 搜索直达</span>
+        <span class="kbd-shortcut">Ctrl K</span>
+      </button>
+
+      <!-- 视觉主题切换 (Notion 质感为主，可自由换肤) -->
+      <select id="themeSelector" class="form-control" style="width: auto; padding: 4px 8px; font-size: 12px;">
+        <option value="notion">📜 Notion 纸面质感</option>
+        <option value="linear">⚡ Linear 极客暗黑</option>
+        <option value="apple">🍏 Apple 工业冷白</option>
+        <option value="business">💼 商务稳健深蓝</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- 主体工作区 -->
+  <main class="main-wrapper">
+
+    <!-- ==================== TAB 1: DASHBOARD 总览 ==================== -->
+    <section id="panel-dashboard" class="tab-panel active">
+      <!-- 紧急临期预警条 (动态显隐) -->
+      <div id="urgentBanner" class="urgent-banner" style="display: none;">
+        <div class="urgent-banner-content">
+          <span style="font-size:18px">🚨</span>
+          <span id="urgentBannerText"><strong>急迫提醒：</strong>有核心资产将在 7 天内到期！</span>
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="App.switchTab('renewals')">立刻查看 ➔</button>
+      </div>
+
+      <!-- 核心指标卡片 -->
+      <div class="kpi-grid">
+        <div class="kpi-card" style="border-left: 3px solid var(--tag-orange-text)">
+          <div class="kpi-header">
+            <span class="kpi-title">个人垫资待报销</span>
+            <span class="kpi-icon">💰</span>
+          </div>
+          <div class="kpi-value" id="kpiReimbAmount">￥0.00</div>
+          <div class="kpi-footer">自掏腰包待财务回血总额</div>
+        </div>
+
+        <div class="kpi-card" style="border-left: 3px solid var(--danger-color)">
+          <div class="kpi-header">
+            <span class="kpi-title">7天内紧急到期</span>
+            <span class="kpi-icon">⏰</span>
+          </div>
+          <div class="kpi-value"><span id="kpiUrgentRenewals">0</span><span class="kpi-unit">个资产</span></div>
+          <div class="kpi-footer">域名/服务器/证书防停摆</div>
+        </div>
+
+        <div class="kpi-card" style="border-left: 3px solid var(--success-color)">
+          <div class="kpi-header">
+            <span class="kpi-title">今日待办完成度</span>
+            <span class="kpi-icon">✅</span>
+          </div>
+          <div class="kpi-value"><span id="kpiDailyTasks">0 / 0</span></div>
+          <div class="kpi-footer">聚焦今日关键推进事项</div>
+        </div>
+
+        <div class="kpi-card" style="border-left: 3px solid var(--accent-color)">
+          <div class="kpi-header">
+            <span class="kpi-title">纳管网站矩阵</span>
+            <span class="kpi-icon">🌐</span>
+          </div>
+          <div class="kpi-value" id="kpiProjectCount">0 项目</div>
+          <div class="kpi-footer">前台/后台/宝塔全景直达</div>
+        </div>
+      </div>
+
+      <!-- 下方双列面板 -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px;">
+        <!-- 待续费资产速查 -->
+        <div class="kpi-card">
+          <div class="section-header" style="margin-bottom: 12px;">
+            <div class="section-title-wrap">
+              <span>🚨</span>
+              <span class="section-title" style="font-size: 15px;">近期急迫到期资产</span>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="App.switchTab('renewals')">全部资产 ➔</button>
+          </div>
+          <div id="dashUrgentList">
+            <div style="color:var(--text-muted);font-size:13px;padding:8px 0;">加载中...</div>
+          </div>
+        </div>
+
+        <!-- 今日待办事项 -->
+        <div class="kpi-card">
+          <div class="section-header" style="margin-bottom: 12px;">
+            <div class="section-title-wrap">
+              <span>📝</span>
+              <span class="section-title" style="font-size: 15px;">今日行动清单</span>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="App.openAddTaskModal('daily')">+ 记待办</button>
+          </div>
+          <div id="dashTodayTasks">
+            <div style="color:var(--text-muted);font-size:13px;padding:8px 0;">加载中...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: PROJECTS 网站项目大框架与通道 ==================== -->
+    <section id="panel-projects" class="tab-panel">
+      <!-- 第一层：全局大框架 (项目矩阵列表) -->
+      <div id="projectsOverviewView">
+        <div class="section-header">
+          <div>
+            <div class="section-title">网站项目总控矩阵</div>
+            <div class="section-subtitle">高密度管理全量网站通道，点击任意项目进入专属工作间与自写说明书</div>
+          </div>
+          <button class="btn btn-primary" onclick="App.openAddProjectModal()">+ 新增网站项目</button>
+        </div>
+
+        <!-- 顶部过滤与搜索条 -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px">
+          <!-- 分类标签过滤器 -->
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div id="projectCategoryFilter" style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-sm btn-primary proj-filter-btn" data-cat="all" onclick="App.filterProjectsByCategory('all')">全部 (<span id="catCountAll">0</span>)</button>
+              <button class="btn btn-sm btn-secondary proj-filter-btn" data-cat="核心官网" onclick="App.filterProjectsByCategory('核心官网')">核心官网</button>
+              <button class="btn btn-sm btn-secondary proj-filter-btn" data-cat="自研系统" onclick="App.filterProjectsByCategory('自研系统')">自研系统</button>
+              <button class="btn btn-sm btn-secondary proj-filter-btn" data-cat="外贸独立站" onclick="App.filterProjectsByCategory('外贸独立站')">外贸独立站</button>
+              <button class="btn btn-sm btn-secondary proj-filter-btn" data-cat="服务器运维" onclick="App.filterProjectsByCategory('服务器运维')">服务器运维</button>
+            </div>
+
+            <!-- 按公司主体筛选 -->
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12px;color:var(--text-muted)">🏢 公司:</span>
+              <select id="projectCompanyFilterSelect" class="form-control" style="width:auto;padding:3px 8px;font-size:12px" onchange="App.filterProjectsByCompany(this.value)">
+                <option value="all">全部公司主体</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 快速搜索过滤框 -->
+          <div style="display:flex;align-items:center;gap:6px;min-width:240px">
+            <span style="font-size:13px;color:var(--text-muted)">🔍</span>
+            <input type="text" id="projectSearchInput" class="form-control" placeholder="按名称/代号/主域名快速筛选..." style="padding:4px 8px;font-size:12.5px" oninput="App.filterProjectsByQuery(this.value)">
+          </div>
+        </div>
+
+        <!-- 高密度项目列表容器 -->
+        <div class="notion-table-container">
+          <table class="notion-table">
+            <thead>
+              <tr>
+                <th style="width:26%">项目 / 站点名称</th>
+                <th style="width:13%">所属公司</th>
+                <th style="width:11%">业务分类</th>
+                <th style="width:24%">主访问网址 (前台/后台)</th>
+                <th style="width:9%">直达入口</th>
+                <th style="width:8%">说明书</th>
+                <th style="width:9%;text-align:right">操作</th>
+              </tr>
+            </thead>
+            <tbody id="projectsTableBody">
+              <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 第二层：单项目专属工作通道 (Project Channel) -->
+      <div id="projectChannelView" style="display:none">
+        <!-- 顶部返回与项目标题栏 -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px 18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow-notion);flex-wrap:wrap;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <button class="btn btn-sm btn-secondary" onclick="App.backToProjectsOverview()">← 返回项目矩阵</button>
+            <div style="font-size:14px;color:var(--text-muted)">/</div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span id="channelProjectName" style="font-size:18px;font-weight:700"></span>
+                <span id="channelProjectCompany" class="badge-status" style="display:none"></span>
+                <span id="channelProjectCategory" class="badge-status normal"></span>
+                <code id="channelProjectCode" style="font-size:11px"></code>
+              </div>
+              <div id="channelProjectDesc" style="font-size:12.5px;color:var(--text-secondary);margin-top:2px"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="btnCopyCompanyInvoice" class="btn btn-sm btn-secondary" style="display:none" onclick="App.copyCurrentProjectCompanyInvoice()" title="一键复制开票抬头、税号及银行账户">📋 复制公司开票信息</button>
+            <button class="btn btn-sm btn-secondary" onclick="App.openAddLinkModal(App.state.currentChannelProjectId)">+ 添加入口</button>
+            <button class="btn btn-sm btn-secondary" onclick="App.openEditProjectModal(App.state.currentChannelProjectId)">项目设置</button>
+          </div>
+        </div>
+
+        <!-- 通道核心 1：快捷直达站台 Launchpad -->
+        <div class="kpi-card" style="margin-bottom:18px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span>🚀</span><span>直达跳转站台 (Launchpad)</span>
+            </div>
+            <span style="font-size:12px;color:var(--text-muted)">点击在新标签页直达，点击 ✎ 修改写错的网址</span>
+          </div>
+          <div id="channelLinksWrap" class="project-links-wrap" style="margin:6px 0"></div>
+        </div>
+
+        <!-- 通道核心 2：项目专属说明书 / 运维手册 (Project Readme) -->
+        <div class="kpi-card" style="margin-bottom:18px;border-top:3px solid var(--accent-color)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border-light)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:16px">📖</span>
+              <span style="font-weight:600;font-size:15px">项目专属说明书 / 运维交付手册</span>
+              <span style="font-size:11.5px;color:var(--text-muted)">记录技术栈、部署步骤、特殊注意事项与交接指南</span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button id="btnTplReadme" class="btn btn-sm btn-secondary" style="display:none" onclick="App.applyReadmeTemplate()">套用规范模版</button>
+              <button id="btnToggleEditReadme" class="btn btn-sm btn-primary" onclick="App.toggleEditChannelReadme()">✏️ 编辑说明书</button>
+            </div>
+          </div>
+
+          <!-- 说明书查看视图 -->
+          <div id="channelReadmeView" style="min-height:120px;font-size:13.5px;line-height:1.7;color:var(--text-main);white-space:pre-wrap;background:var(--bg-subtle);padding:16px;border-radius:var(--radius-sm)"></div>
+
+          <!-- 说明书编辑视图 (默认隐藏) -->
+          <div id="channelReadmeEditWrap" style="display:none;flex-direction:column;gap:10px">
+            <textarea id="channelReadmeTextarea" class="form-control" rows="12" style="font-family:monospace;font-size:13px;line-height:1.6" placeholder="在此编写该网站项目的专属说明书...
+例如：
+### 1. 业务概述与系统架构
+- 网站类型：WordPress 外贸展示站 / 自研 CRM
+- 服务器环境：PHP 7.4 + MySQL 5.7 (宝塔)
+- 源码分支：git@gitlab.com:... (main 分支)
+
+### 2. 核心运维与发布注意
+- 发布新版本时必须手动重启 Redis 容器并清理缓存
+- 上传目录已软链至共享存储 /data/uploads
+
+### 3. 账号与权限规则
+- 生产后台开启了 Google 动态二次验证 (2FA)
+- 数据库端口仅开放给内部 VPN IP 访问"></textarea>
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+              <button class="btn btn-secondary" onclick="App.cancelEditChannelReadme()">取消</button>
+              <button class="btn btn-primary" onclick="App.saveChannelReadme()">💾 保存说明书</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 通道核心 3：该项目绑定的到期资产与生命周期 -->
+        <div class="kpi-card">
+          <div style="font-weight:600;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+            <span>⏰</span><span>关联资产与续费生命周期</span>
+          </div>
+          <div id="channelRenewalsList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: RENEWALS 资产续费雷达 ==================== -->
+    <section id="panel-renewals" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">资产与到期续费雷达</div>
+          <div class="section-subtitle">域名、云服务器、SSL证书、SaaS订阅生命周期跟踪；一键直达续费后台，续费后一键转个人垫资报销</div>
+        </div>
+        <button class="btn btn-primary" onclick="App.openAddRenewalModal()">+ 新增续费项</button>
+      </div>
+
+      <div class="notion-table-container">
+        <table class="notion-table">
+          <thead>
+            <tr>
+              <th>资产/域名名称</th>
+              <th>类型</th>
+              <th>服务商</th>
+              <th>到期日期</th>
+              <th>剩余时间</th>
+              <th>预估金额</th>
+              <th>操作直达</th>
+            </tr>
+          </thead>
+          <tbody id="renewalsTableBody">
+            <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: REIMBURSEMENTS 垫资报销管家 ==================== -->
+    <section id="panel-reimbursements" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">个人垫资与发票报销管家</div>
+          <div class="section-subtitle">手机随手拍照上传发票/扣费凭证，状态全程流转跟踪，告别自掏腰包漏报销</div>
+        </div>
+        <button class="btn btn-primary" onclick="App.openAddReimbModal()">+ 记一笔垫资 (传发票)</button>
+      </div>
+      <div id="reimbContainer" class="reimb-cards-grid"></div>
+    </section>
+
+    <!-- ==================== TAB 5: TASKS 事务统筹 ==================== -->
+    <section id="panel-tasks" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">事务与长远任务统筹</div>
+          <div class="section-subtitle">兼顾今日日常琐事（勾选归档）与跨周期战略项目（百分比进度推进）</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="App.openAddTaskModal('daily')">+ 记今日待办</button>
+          <button class="btn btn-primary" onclick="App.openAddTaskModal('milestone')">+ 建立长远里程碑</button>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px;">
+        <div class="kpi-card">
+          <div style="font-weight:600;font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+            <span>📝</span><span>今日日常任务</span>
+          </div>
+          <div id="tasksDailyList"></div>
+        </div>
+
+        <div class="kpi-card">
+          <div style="font-weight:600;font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+            <span>🎯</span><span>长期项目与跨期里程碑</span>
+          </div>
+          <div id="tasksMilestoneList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 6: KNOWLEDGE AI 知识库与智能幕僚 ==================== -->
+    <section id="panel-knowledge" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">个人知识库与 AI 智能幕僚</div>
+          <div class="section-subtitle">沉淀公司规章、业务 SOP、技术运维要点；支持 AI 智能问答、一键拆解杂乱想法、自动起草管理周报</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="App.sendAiMessage('parse_task')">🤖 让 AI 帮我拆任务</button>
+          <button class="btn btn-secondary" onclick="App.sendAiMessage('weekly_report')">📊 一键生成管理周报</button>
+        </div>
+      </div>
+
+      <div class="kb-layout">
+        <!-- 左侧文档列表 -->
+        <div class="kb-sidebar">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <span style="font-weight:600;font-size:13px">知识文档分类</span>
+            <button class="btn btn-sm btn-secondary" onclick="App.resetKbForm()">+ 写文档</button>
+          </div>
+          <div id="kbDocsList" style="flex:1;overflow-y:auto"></div>
+        </div>
+
+        <!-- 右侧：上部知识编辑 / 下部 AI 对话 -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- 文档详情/编辑卡片 -->
+          <div class="kpi-card" style="padding:16px">
+            <input type="hidden" id="kbEditId">
+            <div style="display:flex;gap:10px;margin-bottom:10px">
+              <input type="text" id="kbEditTitle" class="form-control" placeholder="文档标题 (如: 域名备案与续费规范)" style="flex:2">
+              <input type="text" id="kbEditCategory" class="form-control" placeholder="分类 (如: 运维管理)" style="flex:1">
+              <input type="text" id="kbEditTags" class="form-control" placeholder="标签 (逗号分隔)" style="flex:1">
+              <button class="btn btn-primary" onclick="App.saveKbDoc()">保存文档</button>
+            </div>
+            <textarea id="kbEditContent" class="form-control" rows="5" placeholder="在此沉淀你的工作经验、SOP规范、账号规则、合同备忘等... AI 回答时将自动参考此背景知识"></textarea>
+          </div>
+
+          <!-- AI 智能问答交互窗 -->
+          <div class="ai-chat-box" style="height:380px">
+            <div style="padding:10px 16px;background:var(--bg-subtle);border-bottom:1px solid var(--border-light);font-size:12.5px;font-weight:600;display:flex;justify-content:space-between">
+              <span>🤖 24小时私人管理幕僚 (基于你的知识库深度协同)</span>
+              <span style="font-size:11px;color:var(--text-muted)">兼容 DeepSeek / Kimi / OpenAI</span>
+            </div>
+            <div id="aiMessagesList" class="ai-messages-list">
+              <div class="chat-bubble ai">您好！我是您的私人管理智囊。我已经接入了您的个人工作台知识库背景，您可以随时向我咨询业务 SOP、公司制度，或者输入一段凌乱的想法让我为您拆解成任务清单！</div>
+            </div>
+            <div class="ai-input-area">
+              <textarea id="aiPromptInput" class="ai-textarea" rows="2" placeholder="在此输入问题，或粘贴一段会议速记/杂乱事务让 AI 处理 (Enter发送)..."></textarea>
+              <button class="btn btn-primary" onclick="App.sendAiMessage('chat')">发送咨询</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB: COMPANIES 公司主体管理 ==================== -->
+    <section id="panel-companies" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">公司主体与实体统筹</div>
+          <div class="section-subtitle">维护各公司主体执照信息、开票抬头、税号与对公账户；网站、资产与垫资报销按公司归类统筹</div>
+        </div>
+        <button class="btn btn-primary" onclick="App.openAddCompanyModal()">+ 新增公司主体</button>
+      </div>
+
+      <div class="notion-table-container">
+        <table class="notion-table">
+          <thead>
+            <tr>
+              <th style="width:14%">主体简称 / 标识</th>
+              <th style="width:24%">公司法定全称 (开票抬头)</th>
+              <th style="width:18%">纳税人识别号 (税号)</th>
+              <th style="width:20%">开户银行及账号</th>
+              <th style="width:12%">统筹纳管统计</th>
+              <th style="width:12%;text-align:right">操作</th>
+            </tr>
+          </thead>
+          <tbody id="companiesTableBody">
+            <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 7: SETTINGS 系统设置 ==================== -->
+    <section id="panel-settings" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">系统与参数设置</div>
+          <div class="section-subtitle">配置线上访问密码锁、AI 大模型 API Key 与工作台名称</div>
+        </div>
+        <button class="btn btn-primary" onclick="App.saveConfigSettings()">保存配置</button>
+      </div>
+
+      <div class="kpi-card" style="max-width:720px">
+        <div class="form-group">
+          <label class="form-label">工作台展示名称</label>
+          <input type="text" id="cfgAppTitle" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">线上专属访问密码锁 (留空则不开启验证，设置后手机与电脑都需要输入)</label>
+          <input type="password" id="cfgPassword" class="form-control" placeholder="设置你的专属安全口令">
+        </div>
+
+        <hr style="margin:20px 0;border:none;border-top:1px solid var(--border-light)">
+
+        <div style="font-weight:600;font-size:14px;margin-bottom:12px">🤖 AI 大模型服务配置</div>
+
+        <div class="form-group">
+          <label class="form-label">API 接口地址 (Base URL)</label>
+          <input type="text" id="cfgAiBaseUrl" class="form-control" placeholder="如 https://api.deepseek.com 或 https://api.moonshot.cn/v1">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">模型名称 (Model)</label>
+          <input type="text" id="cfgAiModel" class="form-control" placeholder="如 deepseek-chat, moonshot-v1-8k, gpt-4o">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">API Key 密匙 (<span id="cfgAiKeyStatus">检查中...</span>)</label>
+          <input type="password" id="cfgAiKey" class="form-control" placeholder="填入以 sk- 开头的 API Key (安全保存在服务器本地 SQLite)">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">AI 幕僚系统人设提示词 (System Prompt)</label>
+          <textarea id="cfgAiPrompt" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 手机端专属底部固定导航栏 -->
+  <nav class="mobile-tab-bar">
+    <div class="mobile-tab-item active" data-tab="dashboard">
+      <span class="mobile-tab-icon">📊</span>
+      <span>总览</span>
+    </div>
+    <div class="mobile-tab-item" data-tab="projects">
+      <span class="mobile-tab-icon">🚀</span>
+      <span>跳板</span>
+    </div>
+    <div class="mobile-tab-item" data-tab="renewals">
+      <span class="mobile-tab-icon">⏰</span>
+      <span>续费</span>
+    </div>
+    <div class="mobile-tab-item" data-tab="reimbursements">
+      <span class="mobile-tab-icon">💳</span>
+      <span>报销</span>
+    </div>
+    <div class="mobile-tab-item" data-tab="knowledge">
+      <span class="mobile-tab-icon">🧠</span>
+      <span>AI/知识</span>
+    </div>
+  </nav>
+</div>
+
+<!-- ==================== 模态弹窗库 ==================== -->
+
+<!-- 1. 全局快捷搜索 Command Palette (Ctrl+K) -->
+<div id="searchModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeSearchModal()">
+  <div class="modal-dialog">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;gap:10px">
+      <span style="font-size:16px">🔍</span>
+      <input type="text" id="searchBoxInput" class="form-control" placeholder="输入关键字快速跳转任何网站后台、续费项、知识库..." style="border:none;background:transparent;font-size:15px" oninput="App.renderSearchResults(this.value)">
+      <span class="kbd-shortcut">ESC</span>
+    </div>
+    <div id="searchResultsList" style="max-height:380px;overflow-y:auto;padding:8px"></div>
+  </div>
+</div>
+
+<!-- 2. 【核心神级联动】续费更新与一键转报销弹窗 -->
+<div id="renewModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <span>续费更新与联动转报销</span>
+      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="renewModalId">
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;color:var(--text-muted)">当前资产名称</div>
+        <div id="renewModalName" style="font-weight:600;font-size:15px"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">原有到期日: <span id="renewModalOldExpire" style="font-weight:600"></span></label>
+        <label class="form-label">新的到期日期 (完成续期后的日期)</label>
+        <input type="date" id="renewModalNewDate" class="form-control">
+      </div>
+
+      <div style="margin:16px 0;padding:14px;background:var(--tag-orange-bg);border-radius:var(--radius-md);border:1px solid rgba(204,102,46,0.2)">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;color:var(--tag-orange-text);margin-bottom:10px">
+          <input type="checkbox" id="renewModalAutoReimb" checked style="width:16px;height:16px">
+          <span>☑️ 重点联动：同时生成个人垫资报销单 (免去重复记账)</span>
+        </label>
+        
+        <div class="form-group">
+          <label class="form-label">本次自掏腰包垫付金额 (元)</label>
+          <input type="number" step="0.01" id="renewModalAmount" class="form-control" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">支付方式</label>
+          <select id="renewModalPayMethod" class="form-control">
+            <option value="微信支付">微信支付</option>
+            <option value="支付宝">支付宝</option>
+            <option value="个人信用卡">个人信用卡</option>
+            <option value="银行转账">银行转账</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">上传续费扣款凭证 / 发票 (支持手机直接拍照)</label>
+          <input type="file" accept="image/*" class="form-control" onchange="App.handleFileUpload(this, 'renewModalInvoiceUrl', 'renewInvoicePreview')">
+          <input type="hidden" id="renewModalInvoiceUrl">
+          <img id="renewInvoicePreview" style="display:none;width:100px;height:70px;object-fit:cover;margin-top:6px;border-radius:4px" alt="凭证预览">
+        </div>
+        <div class="form-group">
+          <label class="form-label">补充备忘说明</label>
+          <input type="text" id="renewModalRemark" class="form-control" placeholder="如：已开电子发票，待月底汇总提交">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
+      <button class="btn btn-primary" onclick="App.submitRenewAndReimburse()">确认续期并同步报销</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. 新增/编辑项目弹窗 -->
+<div id="projectModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <span id="projModalTitleText">网站项目维护</span>
+      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="projModalId">
+      <div class="form-group">
+        <label class="form-label">项目名称</label>
+        <input type="text" id="projModalName" class="form-control" placeholder="如：品牌核心官网与分站矩阵">
+      </div>
+      <div class="form-group">
+        <label class="form-label">业务代号 (Code)</label>
+        <input type="text" id="projModalCode" class="form-control" placeholder="如：WEB-MAIN">
+      </div>
+      <div class="form-group">
+        <label class="form-label">所属公司主体 (用于多实体资产开票与发票归集)</label>
+        <select id="projModalCompanyId" class="form-control">
+          <option value="0">-- 暂不归属特定公司 (公共/通用) --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">业务分组/分类</label>
+        <select id="projModalCategory" class="form-control">
+          <option value="核心官网">🌐 核心官网与品牌矩阵</option>
+          <option value="自研系统">⚙️ 自研业务系统/后台</option>
+          <option value="外贸独立站">📦 外贸独立站/海外商城</option>
+          <option value="服务器运维">🖥️ 云主机与运维设施</option>
+          <option value="综合项目">📁 综合业务/其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">项目概要与说明</label>
+        <textarea id="projModalDesc" class="form-control" rows="2" placeholder="简述该项目的主要职能与服务对象"></textarea>
+      </div>
+
+      <!-- 网站设置内的入口列表管理区 (支持直接编辑和删除写错的入口) -->
+      <div id="projModalLinksSection" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-light)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label class="form-label" style="font-weight:600;margin-bottom:0">已纳管的直达入口 (<span id="projModalLinksCount">0</span> 个)</label>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="App.openAddLinkModal(document.getElementById('projModalId').value)">+ 添加入口</button>
+        </div>
+        <div id="projModalLinksList" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto"></div>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+      <button type="button" id="projModalDeleteBtn" class="btn btn-danger" style="display:none" onclick="App.deleteProject()">删除此项目</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
+        <button class="btn btn-primary" onclick="App.saveProject()">保存项目</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. 添加入口链接弹窗 -->
+<div id="linkModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <span id="linkModalTitleText">添加直达跳转入口</span>
+      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="linkModalId">
+      <input type="hidden" id="linkModalProjectId">
+      <div class="form-group">
+        <label class="form-label">入口名称</label>
+        <input type="text" id="linkModalTitle" class="form-control" placeholder="如：管理后台 / 宝塔面板 / 生产服务器">
+      </div>
+      <div class="form-group">
+        <label class="form-label">直达跳转网址 (URL)</label>
+        <input type="url" id="linkModalUrl" class="form-control" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">类型分类 (不同分类有专属配色高亮)</label>
+        <select id="linkModalType" class="form-control">
+          <option value="admin">⚙️ 业务后台 (Admin)</option>
+          <option value="site">🌐 前台页面 (Website)</option>
+          <option value="server">🖥️ 服务器/宝塔 (Server)</option>
+          <option value="repo">📦 代码仓库 (Git)</option>
+          <option value="analytics">📊 流量与统计 (Analytics)</option>
+          <option value="other">🔗 其他快捷链接</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">关联账号备忘 (鼠标悬停即见，防止遗忘)</label>
+        <input type="text" id="linkModalNote" class="form-control" placeholder="如：admin / 密码见密码本">
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+      <button type="button" id="linkModalDeleteBtn" class="btn btn-danger" style="display:none" onclick="App.deleteLink()">删除此入口</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
+        <button class="btn btn-primary" onclick="App.saveLink()">保存入口</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. 记一笔垫资弹窗 -->
+<div id="reimbModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <span>记一笔个人垫资与发票</span>
+      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="reimbModalId">
+      <div class="form-group">
+        <label class="form-label">事项说明</label>
+        <input type="text" id="reimbModalTitle" class="form-control" placeholder="如：自掏垫付腾讯云安全包续费 / 客户招待餐费">
+      </div>
+      <div class="form-group">
+        <label class="form-label">垫付金额 (元)</label>
+        <input type="number" step="0.01" id="reimbModalAmount" class="form-control" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">支付日期</label>
+        <input type="date" id="reimbModalDate" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">垫资支付渠道</label>
+        <select id="reimbModalMethod" class="form-control">
+          <option value="微信支付">微信支付</option>
+          <option value="支付宝">支付宝</option>
+          <option value="个人信用卡">个人信用卡</option>
+          <option value="银行卡转账">银行卡转账</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">拍照上传发票或截图凭证 (手机端点击可直接唤醒相机拍照)</label>
+        <input type="file" accept="image/*" class="form-control" onchange="App.handleFileUpload(this, 'reimbModalInvoiceUrl', 'reimbInvoicePreview')">
+        <input type="hidden" id="reimbModalInvoiceUrl">
+        <img id="reimbInvoicePreview" style="display:none;width:120px;height:80px;object-fit:cover;margin-top:6px;border-radius:4px" alt="凭证预览">
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注说明</label>
+        <input type="text" id="reimbModalRemark" class="form-control" placeholder="如：已开具专票，发票原件在抽屉">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
+      <button class="btn btn-primary" onclick="App.saveReimbursement()">保存垫资单</button>
+    </div>
+  </div>
+</div>
+
+<!-- 6. 续费项弹窗 -->
+<div id="renewalModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <span>资产与续费维护</span>
+      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="renewalEditId">
+      <div class="form-group">
+        <label class="form-label">资产名称</label>
+        <input type="text" id="renewalEditName" class="form-control" placeholder="如：主域名 (example.com)">
+      </div>
+      <div class="form-group">
+        <label class="form-label">分类</label>
+        <select id="renewalEditCategory" class="form-control">
+          <option value="domain">🌐 域名 (Domain)</option>
+          <option value="server">🖥️ 云服务器 (ECS/CVM)</option>
+          <option value="ssl">🔒 SSL 证书</option>
+          <option value="saas">💼 软件订阅 (SaaS)</option>
+          <option value="other">📦 其他重要到期项</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">注册/托管服务商</label>
+        <input type="text" id="renewalEditProvider" class="form-control" placeholder="如：阿里云、腾讯云、Godaddy、Notion">
+      </div>
+      <div class="form-group">
+        <label class="form-label">到期日期</label>
+        <input type="date" id="renewalEditExpireDate" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">预计续费成本 (元)</label>
+        <input type="number" step="0.01" id="renewalEditCost" class="form-control" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">官方续费后台直达链接 (点击可直接跳转缴费)</label>
+        <input type="url" id="renewalEditUrl" class="form-control" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">购买账号/密码备忘</label>
+        <input type="text" id="renewalEditNote" class="form-control" placeholder="如：账号 admin@corp.com">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
+      <button class="btn btn-primary" onclick="App.saveRenewalItem()">保存续费项</button>
+    </div>
+  </div>
+</div>
+
+<!-- 7. 任务新建弹窗 -->
+<div id="taskModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <span>记一笔待办 / 里程碑</span>
+      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">事务类型</label>
+        <select id="taskEditCategory" class="form-control">
+          <option value="daily">📝 今日/日常待办事项</option>
+          <option value="milestone">🎯 长期项目与跨周期里程碑</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">任务内容</label>
+        <input type="text" id="taskEditTitle" class="form-control" placeholder="如：核对下半年服务器预算规划">
+      </div>
+      <div class="form-group">
+        <label class="form-label">优先级</label>
+        <select id="taskEditPriority" class="form-control">
+          <option value="high">🚨 紧急高优</option>
+          <option value="medium">⚖️ 常规推进</option>
+          <option value="low">🌱 低优先级/备忘</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">截止/目标日期</label>
+        <input type="date" id="taskEditDate" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">细节补充与备忘</label>
+        <textarea id="taskEditNote" class="form-control" rows="2" placeholder="补充上下文或要点"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
+      <button class="btn btn-primary" onclick="App.saveTaskItem()">确认创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- 8. 新增/编辑公司主体弹窗 -->
+<div id="companyModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <span id="companyModalTitleText">维护公司主体</span>
+      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="companyModalId">
+      <div class="form-group">
+        <label class="form-label">公司法定全称 (开票完整抬头) *</label>
+        <input type="text" id="companyModalName" class="form-control" placeholder="如：德泰进出口贸易(深圳)有限公司">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">展示简称 (用于标签徽章) *</label>
+          <input type="text" id="companyModalShortName" class="form-control" placeholder="如：德泰外贸">
+        </div>
+        <div class="form-group">
+          <label class="form-label">胶囊标识配色</label>
+          <select id="companyModalColor" class="form-control">
+            <option value="blue">🔵 科技深蓝</option>
+            <option value="orange">🟠 商务活力橙</option>
+            <option value="green">🟢 稳健清绿</option>
+            <option value="purple">🟣 典雅雅紫</option>
+            <option value="red">🔴 热情绯红</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">统一社会信用代码 (纳税人识别号/税号)</label>
+        <input type="text" id="companyModalTaxNumber" class="form-control" placeholder="91440300XXXXXXXXXX">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">开户银行全称</label>
+          <input type="text" id="companyModalBankName" class="form-control" placeholder="如：招商银行深圳高新园支行">
+        </div>
+        <div class="form-group">
+          <label class="form-label">银行对公账号</label>
+          <input type="text" id="companyModalBankAccount" class="form-control" placeholder="7559 1234 5678 901">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">开票注册地址及联系电话</label>
+        <input type="text" id="companyModalAddressPhone" class="form-control" placeholder="如：深圳市南山区高新南道某大厦 0755-88888888">
+      </div>
+      <div class="form-group">
+        <label class="form-label">备注备忘 (主营范围、业务定位)</label>
+        <textarea id="companyModalRemark" class="form-control" rows="2" placeholder="简述该主体的定位与经营方向"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+      <button type="button" id="companyModalDeleteBtn" class="btn btn-danger" style="display:none" onclick="App.deleteCompany()">删除此公司</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
+        <button class="btn btn-primary" onclick="App.saveCompany()">保存公司主体</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 9. 访问口令登录弹窗 -->
+<div id="loginModal" class="modal-overlay" style="display:none">
+  <div class="modal-dialog" style="max-width:380px">
+    <div class="modal-header">
+      <span>安全身份验证</span>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">工作台已开启访问保护，请输入管理者专属访问密码：</div>
+      <input type="password" id="loginPasswordInput" class="form-control" placeholder="输入密码" onkeydown="if(event.key==='Enter') App.submitLogin()">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" style="width:100%" onclick="App.submitLogin()">解锁工作台</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js?v=<?php echo time(); ?>"></script>
+</body>
+</html>
