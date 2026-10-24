@@ -27,6 +27,16 @@ const App = {
     this.switchTab('dashboard');
   },
 
+  // 智能规整外部跳转网址：若用户只输入 www.xxx.com，自动前缀 https:// 防止浏览器将其误识别为相对路径
+  formatUrl(url) {
+    if (!url) return '#';
+    url = String(url).trim();
+    if (!/^(https?:)?\/\//i.test(url)) {
+      return 'https://' + url;
+    }
+    return url;
+  },
+
   // 检查状态和加载偏好
   async checkStatusAndLoadConfig() {
     try {
@@ -49,11 +59,14 @@ const App = {
   },
 
   bindEvents() {
-    // 桌面导航切换
+    // 桌面/侧边栏导航切换
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const tab = e.currentTarget.dataset.tab;
         this.switchTab(tab);
+        if (window.innerWidth <= 768) {
+          this.toggleSidebar(false);
+        }
       });
     });
 
@@ -101,6 +114,22 @@ const App = {
     }
   },
 
+  // 切换侧边栏展开/折叠 (移动端抽屉)
+  toggleSidebar(open) {
+    const sidebar = document.getElementById('appSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (!sidebar) return;
+    const isOpen = open !== undefined ? open : !sidebar.classList.contains('open');
+    sidebar.classList.toggle('open', isOpen);
+    if (backdrop) {
+      if (isOpen) {
+        backdrop.classList.add('active');
+      } else {
+        backdrop.classList.remove('active');
+      }
+    }
+  },
+
   // 标签页切换
   switchTab(tabName) {
     this.state.currentTab = tabName;
@@ -119,6 +148,22 @@ const App = {
     });
     const activePanel = document.getElementById(`panel-${tabName}`);
     if (activePanel) activePanel.classList.add('active');
+
+    // 更新顶部当前栏目标题面包屑
+    const titleEl = document.getElementById('currentTabTitle');
+    if (titleEl) {
+      const titles = {
+        dashboard: '📊 总览看板',
+        projects: '🚀 网站项目跳板',
+        renewals: '⏰ 资产续费雷达',
+        reimbursements: '💳 垫资报销管家',
+        tasks: '📋 事务与待办',
+        knowledge: '🧠 AI 知识库',
+        companies: '🏢 公司主体',
+        settings: '⚙️ 系统设置'
+      };
+      titleEl.innerText = titles[tabName] || tabName;
+    }
 
     // 动态加载对应数据
     switch (tabName) {
@@ -324,6 +369,26 @@ const App = {
       const compColor = p.company_color || 'blue';
       const compShortName = p.company_short_name || '';
 
+      // SSL 证书倒计时渲染
+      let sslBadgeHtml = '<span style="color:var(--text-muted);font-size:11.5px">未配置</span>';
+      if (p.ssl_expire_date) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expDate = new Date(p.ssl_expire_date);
+        expDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((expDate - today) / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) {
+          sslBadgeHtml = `<span class="badge-status danger" title="SSL到期日: ${p.ssl_expire_date}">🔒 已过期 (${Math.abs(diffDays)}天前)</span>`;
+        } else if (diffDays <= 7) {
+          sslBadgeHtml = `<span class="badge-status danger" title="SSL到期日: ${p.ssl_expire_date}">🚨 剩 ${diffDays} 天</span>`;
+        } else if (diffDays <= 30) {
+          sslBadgeHtml = `<span class="badge-status warning" title="SSL到期日: ${p.ssl_expire_date}">⏰ 剩 ${diffDays} 天</span>`;
+        } else {
+          sslBadgeHtml = `<span class="badge-status normal" title="SSL到期日: ${p.ssl_expire_date}">🛡️ 剩 ${diffDays} 天</span>`;
+        }
+        sslBadgeHtml += `<div style="font-size:10.5px;color:var(--text-muted);margin-top:2px">${p.ssl_expire_date}</div>`;
+      }
+
       return `
         <tr>
           <td>
@@ -345,12 +410,15 @@ const App = {
           </td>
           <td>
             ${primaryLink ? `
-              <a href="${primaryLink.url}" target="_blank" style="color:var(--accent-color);font-size:12.5px;display:inline-flex;align-items:center;gap:4px">
+              <a href="${this.formatUrl(primaryLink.url)}" target="_blank" style="color:var(--accent-color);font-size:12.5px;display:inline-flex;align-items:center;gap:4px">
                 <span>${primaryLink.title}</span>
                 <span style="font-size:10px">↗</span>
               </a>
               <div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px">${primaryLink.url}</div>
             ` : `<span style="color:var(--text-muted);font-size:12px">暂未配置主入口</span>`}
+          </td>
+          <td>
+            ${sslBadgeHtml}
           </td>
           <td>
             <span style="font-weight:600;font-size:13px">${links.length}</span>
@@ -396,6 +464,35 @@ const App = {
     document.getElementById('channelProjectCode').innerText = p.code || 'MAIN';
     document.getElementById('channelProjectDesc').innerText = p.description || '暂无项目补充描述';
 
+    // 渲染通道内的 SSL 证书倒计时徽章
+    const sslBadge = document.getElementById('channelProjectSsl');
+    if (sslBadge) {
+      if (p.ssl_expire_date) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expDate = new Date(p.ssl_expire_date);
+        expDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((expDate - today) / (1000 * 60 * 60 * 24));
+        sslBadge.style.display = 'inline-flex';
+        if (diffDays < 0) {
+          sslBadge.className = 'badge-status danger';
+          sslBadge.innerText = `🔒 SSL已过期 (${Math.abs(diffDays)}天前)`;
+        } else if (diffDays <= 7) {
+          sslBadge.className = 'badge-status danger';
+          sslBadge.innerText = `🚨 SSL剩 ${diffDays} 天 (紧急)`;
+        } else if (diffDays <= 30) {
+          sslBadge.className = 'badge-status warning';
+          sslBadge.innerText = `⏰ SSL剩 ${diffDays} 天`;
+        } else {
+          sslBadge.className = 'badge-status normal';
+          sslBadge.innerText = `🛡️ SSL剩 ${diffDays} 天`;
+        }
+        sslBadge.title = `SSL证书到期日: ${p.ssl_expire_date}`;
+      } else {
+        sslBadge.style.display = 'none';
+      }
+    }
+
     const compBadge = document.getElementById('channelProjectCompany');
     const copyInvoiceBtn = document.getElementById('btnCopyCompanyInvoice');
     if (p.company_short_name) {
@@ -424,7 +521,7 @@ const App = {
     } else {
       linksWrap.innerHTML = links.map(link => `
         <div class="launcher-item-wrap">
-          <a href="${link.url}" target="_blank" class="launcher-btn type-${link.type}" title="${link.account_note ? '账号备忘: ' + link.account_note : '点击访问直达'}">
+          <a href="${this.formatUrl(link.url)}" target="_blank" class="launcher-btn type-${link.type}" title="${link.account_note ? '账号备忘: ' + link.account_note : '点击访问直达'}">
             <span>${this.getLinkTypeIcon(link.type)}</span>
             <span>${link.title}</span>
             <span style="font-size:10px;opacity:0.6">↗</span>
@@ -597,7 +694,7 @@ const App = {
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="badge-status ${r.status_level === 'danger' ? 'danger' : (r.status_level === 'warning' ? 'warning' : 'normal')}">剩 ${r.days_left} 天</span>
-          ${r.renew_url ? `<a href="${r.renew_url}" target="_blank" class="btn btn-sm btn-secondary">去官网续费 ↗</a>` : ''}
+          ${r.renew_url ? `<a href="${this.formatUrl(r.renew_url)}" target="_blank" class="btn btn-sm btn-secondary">去官网续费 ↗</a>` : ''}
           <button class="btn btn-sm btn-primary" onclick="App.openRenewModal(${r.id})">更新/转报销</button>
         </div>
       </div>
@@ -663,7 +760,7 @@ const App = {
           <td>￥${parseFloat(r.cost || 0).toFixed(2)}</td>
           <td>
             <div style="display:flex;gap:6px">
-              ${r.renew_url ? `<a href="${r.renew_url}" target="_blank" class="btn btn-sm btn-secondary">去官网续费 ↗</a>` : ''}
+              ${r.renew_url ? `<a href="${this.formatUrl(r.renew_url)}" target="_blank" class="btn btn-sm btn-secondary">去官网续费 ↗</a>` : ''}
               <button class="btn btn-sm btn-primary" onclick="App.openRenewModal(${r.id})">更新/转报销</button>
               <button class="btn btn-sm btn-secondary" onclick="App.openEditRenewalModal(${r.id})">编辑</button>
             </div>
@@ -1040,7 +1137,7 @@ const App = {
       }
       (p.links || []).forEach(l => {
         if (l.title.toLowerCase().includes(q) || l.url.toLowerCase().includes(q)) {
-          results.push({ type: '快捷直达', title: `${p.name} ➔ ${l.title}`, desc: l.url, action: () => { window.open(l.url, '_blank'); App.closeSearchModal(); } });
+          results.push({ type: '快捷直达', title: `${p.name} ➔ ${l.title}`, desc: l.url, action: () => { window.open(this.formatUrl(l.url), '_blank'); App.closeSearchModal(); } });
         }
       });
     });
@@ -1176,6 +1273,8 @@ const App = {
     document.getElementById('projModalCompanyId').value = (this.state.selectedCompanyFilter !== 'all' ? this.state.selectedCompanyFilter : '0');
     document.getElementById('projModalCategory').value = '核心官网';
     document.getElementById('projModalDesc').value = '';
+    const sslDateInput = document.getElementById('projModalSslDate');
+    if (sslDateInput) sslDateInput.value = '';
     const titleText = document.getElementById('projModalTitleText');
     if (titleText) titleText.innerText = '新增网站项目';
     const delBtn = document.getElementById('projModalDeleteBtn');
@@ -1198,6 +1297,8 @@ const App = {
     document.getElementById('projModalCompanyId').value = p.company_id || '0';
     document.getElementById('projModalCategory').value = p.category || '核心官网';
     document.getElementById('projModalDesc').value = p.description || '';
+    const sslDateInput = document.getElementById('projModalSslDate');
+    if (sslDateInput) sslDateInput.value = p.ssl_expire_date || '';
     const titleText = document.getElementById('projModalTitleText');
     if (titleText) titleText.innerText = '网站设置 (' + p.name + ')';
     const delBtn = document.getElementById('projModalDeleteBtn');
@@ -1360,13 +1461,14 @@ const App = {
     const code = document.getElementById('projModalCode').value.trim();
     const category = document.getElementById('projModalCategory').value;
     const description = document.getElementById('projModalDesc').value.trim();
+    const sslExpireDate = document.getElementById('projModalSslDate') ? document.getElementById('projModalSslDate').value.trim() : '';
 
     if (!name) { this.showToast('请输入项目名称', 'error'); return; }
 
     const res = await fetch('api.php?action=save_project', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: id ? Number(id) : 0, company_id: Number(companyId), name, code, category, description })
+      body: JSON.stringify({ id: id ? Number(id) : 0, company_id: Number(companyId), name, code, category, description, ssl_expire_date: sslExpireDate })
     }).then(r => r.json());
 
     if (res.success) {
@@ -1473,11 +1575,12 @@ const App = {
     const id = document.getElementById('linkModalId').value;
     const projectId = document.getElementById('linkModalProjectId').value;
     const title = document.getElementById('linkModalTitle').value.trim();
-    const url = document.getElementById('linkModalUrl').value.trim();
+    let url = document.getElementById('linkModalUrl').value.trim();
     const type = document.getElementById('linkModalType').value;
     const accountNote = document.getElementById('linkModalNote').value.trim();
 
     if (!title || !url) { alert('请输入标题和网址'); return; }
+    url = this.formatUrl(url);
 
     const res = await fetch('api.php?action=save_link', {
       method: 'POST',
@@ -1566,7 +1669,8 @@ const App = {
     const provider = document.getElementById('renewalEditProvider').value.trim();
     const expireDate = document.getElementById('renewalEditExpireDate').value;
     const cost = document.getElementById('renewalEditCost').value;
-    const renewUrl = document.getElementById('renewalEditUrl').value.trim();
+    let renewUrl = document.getElementById('renewalEditUrl').value.trim();
+    if (renewUrl) renewUrl = this.formatUrl(renewUrl);
     const accountNote = document.getElementById('renewalEditNote').value.trim();
 
     if (!name || !expireDate) { alert('请填写名称与到期日'); return; }

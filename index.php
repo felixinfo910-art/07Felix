@@ -21,62 +21,107 @@ $theme = getConfig('theme', 'notion');
 <body>
 
 <div class="app-container">
-  <!-- 顶部主导航 -->
-  <header class="top-header">
-    <div class="brand-section">
-      <div class="brand-icon">📁</div>
-      <div class="brand-title" id="brandTitle"><?php echo htmlspecialchars($appTitle); ?></div>
-      <span class="brand-badge">Manager Hub</span>
+  <!-- 侧边栏遮罩 (移动端展开时) -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="App.toggleSidebar(false)"></div>
+
+  <!-- 左侧固定边栏 -->
+  <aside class="app-sidebar" id="appSidebar">
+    <!-- 侧边栏顶部品牌信息 -->
+    <div class="sidebar-header">
+      <div class="brand-section">
+        <div class="brand-icon">📁</div>
+        <div class="brand-info">
+          <div class="brand-title" id="brandTitle"><?php echo htmlspecialchars($appTitle); ?></div>
+          <span class="brand-badge">Manager Hub</span>
+        </div>
+      </div>
+      <button class="sidebar-close-btn" onclick="App.toggleSidebar(false)" title="收起菜单" aria-label="收起菜单">✕</button>
     </div>
 
-    <!-- 桌面端导航标签 -->
-    <nav class="nav-tabs">
+    <!-- 快捷搜索入口 -->
+    <div class="sidebar-search">
+      <button class="search-trigger-btn" onclick="App.openSearchModal()" title="快捷键 Ctrl+K">
+        <div class="search-trigger-content">
+          <span class="search-icon">🔍</span>
+          <span class="search-text">搜索直达...</span>
+        </div>
+        <span class="kbd-shortcut">Ctrl K</span>
+      </button>
+    </div>
+
+    <!-- 侧边栏导航菜单 -->
+    <nav class="sidebar-nav">
+      <div class="nav-group-title">工作矩阵</div>
       <button class="nav-tab-btn active" data-tab="dashboard">
-        <span>📊</span><span>总览看板</span>
+        <span class="nav-icon">📊</span><span class="nav-label">总览看板</span>
       </button>
       <button class="nav-tab-btn" data-tab="projects">
-        <span>🚀</span><span>网站项目跳板</span>
+        <span class="nav-icon">🚀</span><span class="nav-label">网站项目跳板</span>
       </button>
       <button class="nav-tab-btn" data-tab="renewals">
-        <span>⏰</span><span>资产续费雷达</span>
+        <span class="nav-icon">⏰</span><span class="nav-label">资产续费雷达</span>
       </button>
       <button class="nav-tab-btn" data-tab="reimbursements">
-        <span>💳</span><span>垫资报销管家</span>
+        <span class="nav-icon">💳</span><span class="nav-label">垫资报销管家</span>
       </button>
       <button class="nav-tab-btn" data-tab="tasks">
-        <span>📋</span><span>事务与待办</span>
+        <span class="nav-icon">📋</span><span class="nav-label">事务与待办</span>
       </button>
+
+      <div class="nav-group-title">知识与主体</div>
       <button class="nav-tab-btn" data-tab="knowledge">
-        <span>🧠</span><span>AI 知识库</span>
+        <span class="nav-icon">🧠</span><span class="nav-label">AI 知识库</span>
       </button>
       <button class="nav-tab-btn" data-tab="companies">
-        <span>🏢</span><span>公司主体</span>
+        <span class="nav-icon">🏢</span><span class="nav-label">公司主体</span>
       </button>
+
+      <div class="nav-group-title">偏好与设置</div>
       <button class="nav-tab-btn" data-tab="settings">
-        <span>⚙️</span><span>系统设置</span>
+        <span class="nav-icon">⚙️</span><span class="nav-label">系统设置</span>
       </button>
     </nav>
 
-    <!-- 头部工具栏 -->
-    <div class="header-actions">
-      <!-- 全局搜索触发 -->
-      <button class="search-trigger-btn" onclick="App.openSearchModal()" title="快捷键 Ctrl+K">
-        <span>🔍 搜索直达</span>
-        <span class="kbd-shortcut">Ctrl K</span>
-      </button>
-
-      <!-- 视觉主题切换 (Notion 质感为主，可自由换肤) -->
-      <select id="themeSelector" class="form-control" style="width: auto; padding: 4px 8px; font-size: 12px;">
-        <option value="notion">📜 Notion 纸面质感</option>
-        <option value="linear">⚡ Linear 极客暗黑</option>
-        <option value="apple">🍏 Apple 工业冷白</option>
-        <option value="business">💼 商务稳健深蓝</option>
-      </select>
+    <!-- 侧边栏底部操作区 -->
+    <div class="sidebar-footer">
+      <div class="theme-picker-wrap">
+        <span class="theme-icon">🎨</span>
+        <select id="themeSelector" class="form-control theme-select" title="视觉主题切换">
+          <option value="notion">📜 Notion 纸面质感</option>
+          <option value="linear">⚡ Linear 极客暗黑</option>
+          <option value="apple">🍏 Apple 工业冷白</option>
+          <option value="business">💼 商务稳健深蓝</option>
+        </select>
+      </div>
     </div>
-  </header>
+  </aside>
 
-  <!-- 主体工作区 -->
-  <main class="main-wrapper">
+  <!-- 右侧主内容区域 -->
+  <div class="main-content-layout">
+    <!-- 顶部极简工作条 -->
+    <header class="top-header">
+      <div class="header-left">
+        <button class="mobile-toggle-btn" onclick="App.toggleSidebar(true)" title="展开菜单" aria-label="展开菜单">
+          <span>☰</span>
+        </button>
+        <div class="current-page-indicator">
+          <span class="page-parent">工作台</span>
+          <span class="page-divider">/</span>
+          <span class="page-current" id="currentTabTitle">📊 总览看板</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- 桌面端顶部搜索按钮 -->
+        <button class="search-trigger-btn search-trigger-top" onclick="App.openSearchModal()" title="快捷键 Ctrl+K">
+          <span>🔍 搜索直达</span>
+          <span class="kbd-shortcut">Ctrl K</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 主体工作区 -->
+    <main class="main-wrapper">
 
     <!-- ==================== TAB 1: DASHBOARD 总览 ==================== -->
     <section id="panel-dashboard" class="tab-panel active">
@@ -205,17 +250,18 @@ $theme = getConfig('theme', 'notion');
           <table class="notion-table">
             <thead>
               <tr>
-                <th style="width:26%">项目 / 站点名称</th>
-                <th style="width:13%">所属公司</th>
-                <th style="width:11%">业务分类</th>
-                <th style="width:24%">主访问网址 (前台/后台)</th>
-                <th style="width:9%">直达入口</th>
-                <th style="width:8%">说明书</th>
-                <th style="width:9%;text-align:right">操作</th>
+                <th style="width:23%">项目 / 站点名称</th>
+                <th style="width:12%">所属公司</th>
+                <th style="width:10%">业务分类</th>
+                <th style="width:20%">主访问网址 (前台/后台)</th>
+                <th style="width:12%">SSL 证书到期</th>
+                <th style="width:8%">直达入口</th>
+                <th style="width:7%">说明书</th>
+                <th style="width:8%;text-align:right">操作</th>
               </tr>
             </thead>
             <tbody id="projectsTableBody">
-              <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">加载中...</td></tr>
+              <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">加载中...</td></tr>
             </tbody>
           </table>
         </div>
@@ -233,6 +279,7 @@ $theme = getConfig('theme', 'notion');
                 <span id="channelProjectName" style="font-size:18px;font-weight:700"></span>
                 <span id="channelProjectCompany" class="badge-status" style="display:none"></span>
                 <span id="channelProjectCategory" class="badge-status normal"></span>
+                <span id="channelProjectSsl" class="badge-status" style="display:none"></span>
                 <code id="channelProjectCode" style="font-size:11px"></code>
               </div>
               <div id="channelProjectDesc" style="font-size:12.5px;color:var(--text-secondary);margin-top:2px"></div>
@@ -534,6 +581,7 @@ $theme = getConfig('theme', 'notion');
       <span>AI/知识</span>
     </div>
   </nav>
+  </div>
 </div>
 
 <!-- ==================== 模态弹窗库 ==================== -->
@@ -643,6 +691,16 @@ $theme = getConfig('theme', 'notion');
       <div class="form-group">
         <label class="form-label">项目概要与说明</label>
         <textarea id="projModalDesc" class="form-control" rows="2" placeholder="简述该项目的主要职能与服务对象"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;justify-content:space-between;align-items:center">
+          <span>🔒 SSL 证书到期时间 (可选)</span>
+          <span style="font-size:11px;color:var(--text-muted);font-weight:normal">手写/选择到期日后自动倒计时，留空则不监控</span>
+        </label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="date" id="projModalSslDate" class="form-control">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('projModalSslDate').value=''" title="清空并关闭此项倒计时">清空</button>
+        </div>
       </div>
 
       <!-- 网站设置内的入口列表管理区 (支持直接编辑和删除写错的入口) -->

@@ -178,6 +178,26 @@ switch ($action) {
         foreach ($projects as &$p) {
             $linksStmt->execute([$p['id']]);
             $p['links'] = $linksStmt->fetchAll();
+
+            // 计算 SSL 证书倒计时 (如果配置了 ssl_expire_date)
+            if (!empty($p['ssl_expire_date'])) {
+                $today = new DateTime(date('Y-m-d'));
+                $exp = new DateTime($p['ssl_expire_date']);
+                $diff = (int)$today->diff($exp)->format('%r%a');
+                $p['ssl_days_left'] = $diff;
+                if ($diff < 0) {
+                    $p['ssl_status'] = 'expired';
+                } elseif ($diff <= 7) {
+                    $p['ssl_status'] = 'danger';
+                } elseif ($diff <= 30) {
+                    $p['ssl_status'] = 'warning';
+                } else {
+                    $p['ssl_status'] = 'normal';
+                }
+            } else {
+                $p['ssl_days_left'] = null;
+                $p['ssl_status'] = 'none';
+            }
         }
         jsonResponse(true, $projects);
         break;
@@ -190,18 +210,20 @@ switch ($action) {
         $desc = trim($inputData['description'] ?? '');
         $category = trim($inputData['category'] ?? '核心官网');
         $readme = trim($inputData['readme'] ?? '');
+        $sslExpireDate = trim($inputData['ssl_expire_date'] ?? '');
+        $sslExpireDate = empty($sslExpireDate) ? null : $sslExpireDate;
 
         if (empty($name)) {
             jsonResponse(false, null, '项目名称不能为空');
         }
 
         if ($id > 0) {
-            $stmt = $db->prepare("UPDATE projects SET company_id = ?, name = ?, code = ?, description = ?, category = ?, readme = ? WHERE id = ?");
-            $stmt->execute([$companyId, $name, $code, $desc, $category, $readme, $id]);
+            $stmt = $db->prepare("UPDATE projects SET company_id = ?, name = ?, code = ?, description = ?, category = ?, readme = ?, ssl_expire_date = ? WHERE id = ?");
+            $stmt->execute([$companyId, $name, $code, $desc, $category, $readme, $sslExpireDate, $id]);
         } else {
             $sortOrder = (int)($inputData['sort_order'] ?? 0);
-            $stmt = $db->prepare("INSERT INTO projects (company_id, name, code, description, category, readme, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$companyId, $name, $code, $desc, $category, $readme, $sortOrder]);
+            $stmt = $db->prepare("INSERT INTO projects (company_id, name, code, description, category, readme, ssl_expire_date, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$companyId, $name, $code, $desc, $category, $readme, $sslExpireDate, $sortOrder]);
             $id = $db->lastInsertId();
         }
         jsonResponse(true, ['id' => $id], '项目已保存');
@@ -233,6 +255,10 @@ switch ($action) {
         $projectId = (int)($inputData['project_id'] ?? 0);
         $title = trim($inputData['title'] ?? '');
         $url = trim($inputData['url'] ?? '');
+        if (!empty($url) && !preg_match('#^(https?:)?//#i', $url)) {
+            $url = 'https://' . $url;
+        }
+
         $type = $inputData['type'] ?? 'site';
         $accountNote = trim($inputData['account_note'] ?? '');
 
@@ -288,6 +314,9 @@ switch ($action) {
         $provider = trim($inputData['provider'] ?? '');
         $expireDate = trim($inputData['expire_date'] ?? '');
         $renewUrl = trim($inputData['renew_url'] ?? '');
+        if (!empty($renewUrl) && !preg_match('#^(https?:)?//#i', $renewUrl)) {
+            $renewUrl = 'https://' . $renewUrl;
+        }
         $cost = (float)($inputData['cost'] ?? 0);
         $accountNote = trim($inputData['account_note'] ?? '');
         $remindDays = (int)($inputData['remind_days'] ?? 30);

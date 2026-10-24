@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Felix 管理者个人数字工作台 (Notion 纸面质感版)",
   "scripts": {
-    "dev": "D:\\phpstudy_pro\\Extensions\\php\\php7.4.3nts\\php.exe -S 0.0.0.0:8088 -t .",
-    "start": "D:\\phpstudy_pro\\Extensions\\php\\php7.4.3nts\\php.exe -S 0.0.0.0:8088 -t ."
+    "dev": "php -S 0.0.0.0:8088 -t .",
+    "start": "php -S 0.0.0.0:8088 -t ."
   },
   "keywords": ["manager", "dashboard", "workbench"],
   "author": "Felix"

@@ -64,6 +64,7 @@ class Database {
             description TEXT,
             category TEXT DEFAULT '核心官网',
             readme TEXT,
+            ssl_expire_date DATE,            -- 手写/自设SSL到期时间 (留空则不监控)
             sort_order INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
@@ -72,6 +73,7 @@ class Database {
         try { $db->exec("ALTER TABLE projects ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
         try { $db->exec("ALTER TABLE projects ADD COLUMN readme TEXT"); } catch (Exception $e) {}
         try { $db->exec("ALTER TABLE projects ADD COLUMN category TEXT DEFAULT '核心官网'"); } catch (Exception $e) {}
+        try { $db->exec("ALTER TABLE projects ADD COLUMN ssl_expire_date DATE"); } catch (Exception $e) {}
         try { $db->exec("ALTER TABLE reimbursements ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
         try { $db->exec("ALTER TABLE renewals ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
 
@@ -170,6 +172,12 @@ class Database {
                     2
                 ]);
             }
+        } catch (Exception $e) {}
+
+        // 自动规整 project_links 和 renewals 中的协议前缀（防止用户输入 www.xxx.com 时浏览器误作为相对路径）
+        try {
+            $db->exec("UPDATE project_links SET url = 'https://' || url WHERE url NOT LIKE 'http://%' AND url NOT LIKE 'https://%' AND url NOT LIKE '//%' AND url != ''");
+            $db->exec("UPDATE renewals SET renew_url = 'https://' || renew_url WHERE renew_url IS NOT NULL AND renew_url != '' AND renew_url NOT LIKE 'http://%' AND renew_url NOT LIKE 'https://%' AND renew_url NOT LIKE '//%'");
         } catch (Exception $e) {}
     }
 

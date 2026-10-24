@@ -10,15 +10,29 @@ echo 本地访问地址: http://127.0.0.1:8088
 echo 局域网/手机同一WiFi访问地址: 请查看本机内网IP:8088
 echo.
 
-set PHP_BIN="D:\phpstudy_pro\Extensions\php\php7.4.3nts\php.exe"
-
-if exist %PHP_BIN% (
-    echo [OK] 找到现成环境: %PHP_BIN%
-    start "" http://127.0.0.1:8088
-    %PHP_BIN% -S 0.0.0.0:8088 -t "%~dp0"
-) else (
-    echo [提示] 未在默认路径找到 php7.4.3，尝试系统默认 php 命令...
+where php >nul 2>nul
+if %errorlevel% equ 0 (
+    echo [OK] 找到系统环境中的 PHP
     start "" http://127.0.0.1:8088
     php -S 0.0.0.0:8088 -t "%~dp0"
+    goto end
 )
+
+if exist "D:\phpstudy_pro\Extensions\php\php7.4.3nts\php.exe" (
+    echo [OK] 找到环境: php7.4.3nts
+    start "" http://127.0.0.1:8088
+    "D:\phpstudy_pro\Extensions\php\php7.4.3nts\php.exe" -S 0.0.0.0:8088 -t "%~dp0"
+    goto end
+)
+
+if exist "D:\phpstudy_pro\Extensions\php\php7.3.4nts\php.exe" (
+    echo [OK] 找到环境: php7.3.4nts
+    start "" http://127.0.0.1:8088
+    "D:\phpstudy_pro\Extensions\php\php7.3.4nts\php.exe" -S 0.0.0.0:8088 -t "%~dp0"
+    goto end
+)
+
+echo [错误] 未检测到 PHP 环境，请确认已安装或将其加入环境变量。
 pause
+
+:end
