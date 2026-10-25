@@ -203,7 +203,12 @@ switch ($action) {
         $linksStmt = $db->prepare("SELECT * FROM project_links WHERE project_id = ? ORDER BY sort_order ASC, id ASC");
         foreach ($projects as &$p) {
             $linksStmt->execute([$p['id']]);
-            $p['links'] = $linksStmt->fetchAll();
+            $rawLinks = $linksStmt->fetchAll();
+            foreach ($rawLinks as &$lk) {
+                $lk['has_password'] = !empty($lk['login_password_encrypted']);
+                unset($lk['login_password_encrypted']); // 列表批量查询杜绝泄露密文
+            }
+            $p['links'] = $rawLinks;
 
             // 计算 SSL 证书倒计时 (如果配置了 ssl_expire_date)
             if (!empty($p['ssl_expire_date'])) {
@@ -287,18 +292,34 @@ switch ($action) {
 
         $type = $inputData['type'] ?? 'site';
         $accountNote = trim($inputData['account_note'] ?? '');
+        $loginAccount = trim($inputData['login_account'] ?? '');
+        $loginPassword = isset($inputData['login_password']) ? (string)$inputData['login_password'] : null;
+        $clearPassword = !empty($inputData['clear_password']);
+        $autoLoginType = $inputData['auto_login_type'] ?? 'copy_and_jump';
+        $postTargetUrl = trim($inputData['post_target_url'] ?? '');
 
         if (empty($title) || empty($url) || $projectId <= 0) {
             jsonResponse(false, null, '标题和链接为必填项');
         }
 
         if ($id > 0) {
-            $stmt = $db->prepare("UPDATE project_links SET title = ?, url = ?, type = ?, account_note = ? WHERE id = ?");
-            $stmt->execute([$title, $url, $type, $accountNote, $id]);
+            // 查询原有记录
+            $existing = $db->query("SELECT login_password_encrypted FROM project_links WHERE id = {$id}")->fetch();
+            $encryptedPass = $existing ? $existing['login_password_encrypted'] : null;
+
+            if ($clearPassword) {
+                $encryptedPass = null;
+            } elseif ($loginPassword !== null && $loginPassword !== '') {
+                $encryptedPass = encryptSecret($loginPassword);
+            }
+
+            $stmt = $db->prepare("UPDATE project_links SET title = ?, url = ?, type = ?, account_note = ?, login_account = ?, login_password_encrypted = ?, auto_login_type = ?, post_target_url = ? WHERE id = ?");
+            $stmt->execute([$title, $url, $type, $accountNote, $loginAccount, $encryptedPass, $autoLoginType, $postTargetUrl, $id]);
         } else {
+            $encryptedPass = (!empty($loginPassword) && !$clearPassword) ? encryptSecret($loginPassword) : null;
             $sortOrder = (int)($inputData['sort_order'] ?? 0);
-            $stmt = $db->prepare("INSERT INTO project_links (project_id, title, url, type, account_note, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$projectId, $title, $url, $type, $accountNote, $sortOrder]);
+            $stmt = $db->prepare("INSERT INTO project_links (project_id, title, url, type, account_note, login_account, login_password_encrypted, auto_login_type, post_target_url, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$projectId, $title, $url, $type, $accountNote, $loginAccount, $encryptedPass, $autoLoginType, $postTargetUrl, $sortOrder]);
             $id = $db->lastInsertId();
         }
         jsonResponse(true, ['id' => $id], '链接已保存');
@@ -553,6 +574,10 @@ switch ($action) {
     // ---------------- 高频业务快速通道 ----------------
     case 'get_quick_portals':
         $portals = $db->query("SELECT * FROM quick_portals ORDER BY sort_order ASC, id ASC")->fetchAll();
+        foreach ($portals as &$pt) {
+            $pt['has_password'] = !empty($pt['login_password_encrypted']);
+            unset($pt['login_password_encrypted']); // 列表批量查询杜绝泄露密文
+        }
         jsonResponse(true, $portals);
         break;
 
@@ -563,6 +588,11 @@ switch ($action) {
         $icon = trim($inputData['icon'] ?? '⚡');
         $category = trim($inputData['category'] ?? '常用业务');
         $accountNote = trim($inputData['account_note'] ?? '');
+        $loginAccount = trim($inputData['login_account'] ?? '');
+        $loginPassword = isset($inputData['login_password']) ? (string)$inputData['login_password'] : null;
+        $clearPassword = !empty($inputData['clear_password']);
+        $autoLoginType = $inputData['auto_login_type'] ?? 'copy_and_jump';
+        $postTargetUrl = trim($inputData['post_target_url'] ?? '');
         $sortOrder = (int)($inputData['sort_order'] ?? 0);
 
         if (empty($title) || empty($url)) {
@@ -575,11 +605,22 @@ switch ($action) {
         }
 
         if ($id > 0) {
-            $stmt = $db->prepare("UPDATE quick_portals SET title = ?, url = ?, icon = ?, category = ?, account_note = ?, sort_order = ? WHERE id = ?");
-            $stmt->execute([$title, $url, $icon, $category, $accountNote, $sortOrder, $id]);
+            // 查询原有记录
+            $existing = $db->query("SELECT login_password_encrypted FROM quick_portals WHERE id = {$id}")->fetch();
+            $encryptedPass = $existing ? $existing['login_password_encrypted'] : null;
+
+            if ($clearPassword) {
+                $encryptedPass = null;
+            } elseif ($loginPassword !== null && $loginPassword !== '') {
+                $encryptedPass = encryptSecret($loginPassword);
+            }
+
+            $stmt = $db->prepare("UPDATE quick_portals SET title = ?, url = ?, icon = ?, category = ?, account_note = ?, login_account = ?, login_password_encrypted = ?, auto_login_type = ?, post_target_url = ?, sort_order = ? WHERE id = ?");
+            $stmt->execute([$title, $url, $icon, $category, $accountNote, $loginAccount, $encryptedPass, $autoLoginType, $postTargetUrl, $sortOrder, $id]);
         } else {
-            $stmt = $db->prepare("INSERT INTO quick_portals (title, url, icon, category, account_note, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$title, $url, $icon, $category, $accountNote, $sortOrder]);
+            $encryptedPass = (!empty($loginPassword) && !$clearPassword) ? encryptSecret($loginPassword) : null;
+            $stmt = $db->prepare("INSERT INTO quick_portals (title, url, icon, category, account_note, login_account, login_password_encrypted, auto_login_type, post_target_url, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$title, $url, $icon, $category, $accountNote, $loginAccount, $encryptedPass, $autoLoginType, $postTargetUrl, $sortOrder]);
             $id = $db->lastInsertId();
         }
         jsonResponse(true, ['id' => $id], '快速通道已保存');
@@ -589,6 +630,40 @@ switch ($action) {
         $id = (int)($inputData['id'] ?? 0);
         $db->prepare("DELETE FROM quick_portals WHERE id = ?")->execute([$id]);
         jsonResponse(true, null, '快速通道已成功移除');
+        break;
+
+    // ---------------- 凭据安全解密与跳板就绪接口 ----------------
+    case 'get_credential':
+        $type = $inputData['type'] ?? ''; // 'portal' 或 'link'
+        $id = (int)($inputData['id'] ?? 0);
+        if ($id <= 0 || !in_array($type, ['portal', 'link'])) {
+            jsonResponse(false, null, '无效的凭据请求参数');
+        }
+
+        if ($type === 'portal') {
+            $stmt = $db->prepare("SELECT id, title, url, login_account, login_password_encrypted, auto_login_type, post_target_url FROM quick_portals WHERE id = ?");
+        } else {
+            $stmt = $db->prepare("SELECT id, title, url, login_account, login_password_encrypted, auto_login_type, post_target_url FROM project_links WHERE id = ?");
+        }
+        $stmt->execute([$id]);
+        $item = $stmt->fetch();
+        if (!$item) {
+            jsonResponse(false, null, '未找到对应的条目');
+        }
+
+        $plainPassword = !empty($item['login_password_encrypted']) ? decryptSecret($item['login_password_encrypted']) : '';
+        
+        jsonResponse(true, [
+            'id' => (int)$item['id'],
+            'type' => $type,
+            'title' => $item['title'],
+            'url' => $item['url'],
+            'login_account' => $item['login_account'] ?: '',
+            'login_password' => $plainPassword,
+            'has_password' => !empty($plainPassword),
+            'auto_login_type' => $item['auto_login_type'] ?: 'copy_and_jump',
+            'post_target_url' => $item['post_target_url'] ?: ''
+        ]);
         break;
 
     // ---------------- 知识库文档 ----------------

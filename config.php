@@ -42,11 +42,12 @@ if (IS_PRODUCTION) {
         ini_set('error_log', $logDir . '/php_errors.log');
     }
 
-    // 线上生产安全防护响应头
+    // 线上生产安全防护与防抓取收录响应头
     if (!headers_sent()) {
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: SAMEORIGIN');
         header('X-XSS-Protection: 1; mode=block');
+        header('X-Robots-Tag: noindex, nofollow, noarchive, nosnippet');
     }
 } else {
     error_reporting(E_ALL);
@@ -114,5 +115,58 @@ function setConfig($key, $value) {
 // 检查是否登录
 function checkAuth() {
     return !empty($_SESSION['auth_user']);
+}
+
+// ---------------- 工业级 AES-256-GCM 凭据加密与解密守护 ----------------
+function getEncryptionKey() {
+    static $cachedKey = null;
+    if ($cachedKey !== null) return $cachedKey;
+    
+    // 1. 优先从 .env 读取高安全独立密钥
+    $envFile = __DIR__ . '/.env';
+    if (file_exists($envFile)) {
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (strpos($line, 'APP_KEY=') === 0) {
+                $val = trim(substr($line, 8));
+                if (!empty($val)) {
+                    $cachedKey = hash('sha256', $val, true);
+                    return $cachedKey;
+                }
+            }
+        }
+    }
+    
+    // 2. 若未在 .env 配置，则从数据库持久化读取系统自生根秘钥，保证秘钥生命周期恒定
+    $dbKey = getConfig('app_system_secret', '');
+    if (empty($dbKey)) {
+        $dbKey = bin2hex(random_bytes(32));
+        setConfig('app_system_secret', $dbKey);
+    }
+    $cachedKey = hash('sha256', $dbKey, true);
+    return $cachedKey;
+}
+
+function encryptSecret($plainText) {
+    if ($plainText === null || $plainText === '') return '';
+    $key = getEncryptionKey();
+    $iv = random_bytes(12); // GCM 推荐标准 12 字节 IV
+    $tag = '';
+    $cipher = openssl_encrypt($plainText, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag);
+    if ($cipher === false) return '';
+    return base64_encode($iv . $tag . $cipher);
+}
+
+function decryptSecret($cipherText) {
+    if (empty($cipherText)) return '';
+    $data = base64_decode($cipherText);
+    if (strlen($data) < 28) return ''; // 12字节IV + 16字节Tag
+    $iv = substr($data, 0, 12);
+    $tag = substr($data, 12, 16);
+    $cipher = substr($data, 28);
+    $key = getEncryptionKey();
+    $plain = openssl_decrypt($cipher, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag);
+    return $plain === false ? '' : $plain;
 }
 

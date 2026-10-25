@@ -1384,3 +1384,171 @@ a {
   background: var(--bg-subtle);
   color: var(--text-main);
 }
+
+/* ---------------- 安全跳板与登录助手浮动胶囊 (Notion 质感) ---------------- */
+.security-login-dock {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 330px;
+  max-width: calc(100vw - 32px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+  z-index: 99999;
+  overflow: hidden;
+  animation: slideUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dock-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dock-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.dock-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dock-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 210px;
+}
+
+.dock-close-btn {
+  border: none;
+  background: none;
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: all 0.12s ease;
+}
+
+.dock-close-btn:hover {
+  background: rgba(0,0,0,0.06);
+  color: var(--text-main);
+}
+
+.dock-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dock-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.dock-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.dock-field-value {
+  font-size: 12px;
+  color: var(--text-main);
+  font-family: var(--font-mono, monospace);
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dock-pass-val {
+  letter-spacing: 2px;
+}
+
+.dock-btn {
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  height: 26px !important;
+  white-space: nowrap;
+}
+
+.dock-countdown-bar {
+  width: 100%;
+  height: 3px;
+  background: var(--border-color);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.dock-countdown-fill {
+  width: 100%;
+  height: 100%;
+  background: var(--primary-color, #2383E2);
+  transition: width 1s linear;
+}
+
+.dock-footer-tip {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* 凭据安全小锁徽章 */
+.credential-key-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: rgba(35, 131, 226, 0.1);
+  color: var(--primary-color, #2383e2);
+  margin-left: 4px;
+  flex-shrink: 0;
+}

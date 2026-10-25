@@ -16,7 +16,10 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="管理工作台">
-  <meta name="theme-color" content="#F7F6F3">
+  <!-- 严禁任何搜索引擎爬取、收录、快照与索引 -->
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="baiduspider" content="noindex, nofollow, noarchive, nosnippet">
   
   <link rel="stylesheet" href="css/app.css?v=<?php echo $cssVer; ?>">
 </head>
@@ -915,6 +918,51 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
         <label class="form-label">关联账号备忘 (鼠标悬停即见，防止遗忘)</label>
         <input type="text" id="linkModalNote" class="form-control" placeholder="如：admin / 密码见密码本">
       </div>
+
+      <!-- 凭据安全配置区域 (可选) -->
+      <div class="credential-box" style="margin-top:14px;padding:12px;background:var(--bg-subtle);border:1px solid var(--border-color);border-radius:var(--radius-sm)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:12px;font-weight:600;color:var(--text-main);display:flex;align-items:center;gap:5px">
+            🔑 登录凭据配置 <span style="font-size:11px;font-weight:normal;color:var(--text-muted)">(可选 · AES-256-GCM 加密存储)</span>
+          </span>
+          <span id="linkModalPassStatusBadge" class="badge" style="display:none;background:rgba(46,160,67,0.15);color:var(--success-color);font-size:10px">已存密保</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group" style="margin-bottom:8px">
+            <label class="form-label" style="font-size:11px">登录账号 (选填)</label>
+            <input type="text" id="linkModalLoginAccount" class="form-control" placeholder="用户名/邮箱/手机" style="font-size:12px">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label class="form-label" style="font-size:11px">登录密码 (选填)</label>
+            <div style="position:relative">
+              <input type="password" id="linkModalLoginPassword" class="form-control" placeholder="留空则不修改" style="font-size:12px;padding-right:30px">
+              <span onclick="App.togglePasswordVisibility('linkModalLoginPassword')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:13px;opacity:0.6" title="显示/隐藏">👁️</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" style="font-size:11px">自动跳板策略</label>
+            <select id="linkModalAutoLoginType" class="form-control" style="font-size:12px" onchange="App.handleAutoLoginTypeChange(this, 'linkModalPostTargetGroup')">
+              <option value="copy_and_jump">🚀 一键直达 + 剪贴板安全速填 (推荐)</option>
+              <option value="post_submit">⚡ 内部系统自动 POST 免密登录</option>
+              <option value="none">🔒 仅加密备忘 (不自动填充)</option>
+            </select>
+          </div>
+          <div style="padding-top:16px">
+            <button type="button" class="btn btn-sm btn-secondary" style="font-size:11px;padding:4px 8px" onclick="App.generateRandomPassword('linkModalLoginPassword')" title="生成高强度随机密码">🎲 随机强密码</button>
+          </div>
+        </div>
+        <div id="linkModalPostTargetGroup" class="form-group" style="display:none;margin-top:8px;margin-bottom:0">
+          <label class="form-label" style="font-size:11px">自动 POST 提交地址 (若不填则默认提交到上方跳转网址)</label>
+          <input type="text" id="linkModalPostTargetUrl" class="form-control" placeholder="如: https://example.com/api/login" style="font-size:12px">
+        </div>
+        <div id="linkModalClearPassWrap" style="display:none;margin-top:6px;text-align:right">
+          <label style="font-size:11px;color:var(--danger-color);cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+            <input type="checkbox" id="linkModalClearPass"> 清除并移除已保存的加密密码
+          </label>
+        </div>
+      </div>
     </div>
     <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
       <button type="button" id="linkModalDeleteBtn" class="btn btn-danger" style="display:none" onclick="App.deleteLink()">删除此入口</button>
@@ -1200,6 +1248,51 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
         <label class="form-label">常用账号提示 / 备忘说明 (非密码)</label>
         <input type="text" id="portalModalNote" class="form-control" placeholder="如：主店铺后台 / 邮箱 sales@corp.com">
       </div>
+
+      <!-- 凭据安全配置区域 (可选) -->
+      <div class="credential-box" style="margin-top:14px;padding:12px;background:var(--bg-subtle);border:1px solid var(--border-color);border-radius:var(--radius-sm)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:12px;font-weight:600;color:var(--text-main);display:flex;align-items:center;gap:5px">
+            🔑 登录凭据配置 <span style="font-size:11px;font-weight:normal;color:var(--text-muted)">(可选 · AES-256-GCM 加密存储)</span>
+          </span>
+          <span id="portalModalPassStatusBadge" class="badge" style="display:none;background:rgba(46,160,67,0.15);color:var(--success-color);font-size:10px">已存密保</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group" style="margin-bottom:8px">
+            <label class="form-label" style="font-size:11px">登录账号 (选填)</label>
+            <input type="text" id="portalModalLoginAccount" class="form-control" placeholder="用户名/邮箱/手机" style="font-size:12px">
+          </div>
+          <div class="form-group" style="margin-bottom:8px">
+            <label class="form-label" style="font-size:11px">登录密码 (选填)</label>
+            <div style="position:relative">
+              <input type="password" id="portalModalLoginPassword" class="form-control" placeholder="留空则不修改" style="font-size:12px;padding-right:30px">
+              <span onclick="App.togglePasswordVisibility('portalModalLoginPassword')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:13px;opacity:0.6" title="显示/隐藏">👁️</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" style="font-size:11px">自动跳板策略</label>
+            <select id="portalModalAutoLoginType" class="form-control" style="font-size:12px" onchange="App.handleAutoLoginTypeChange(this, 'portalModalPostTargetGroup')">
+              <option value="copy_and_jump">🚀 一键直达 + 剪贴板安全速填 (推荐)</option>
+              <option value="post_submit">⚡ 内部系统自动 POST 免密登录</option>
+              <option value="none">🔒 仅加密备忘 (不自动填充)</option>
+            </select>
+          </div>
+          <div style="padding-top:16px">
+            <button type="button" class="btn btn-sm btn-secondary" style="font-size:11px;padding:4px 8px" onclick="App.generateRandomPassword('portalModalLoginPassword')" title="生成高强度随机密码">🎲 随机强密码</button>
+          </div>
+        </div>
+        <div id="portalModalPostTargetGroup" class="form-group" style="display:none;margin-top:8px;margin-bottom:0">
+          <label class="form-label" style="font-size:11px">自动 POST 提交地址 (若不填则默认提交到上方跳转网址)</label>
+          <input type="text" id="portalModalPostTargetUrl" class="form-control" placeholder="如: https://example.com/api/login" style="font-size:12px">
+        </div>
+        <div id="portalModalClearPassWrap" style="display:none;margin-top:6px;text-align:right">
+          <label style="font-size:11px;color:var(--danger-color);cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+            <input type="checkbox" id="portalModalClearPass"> 清除并移除已保存的加密密码
+          </label>
+        </div>
+      </div>
     </div>
     <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
       <button type="button" id="portalModalDeleteBtn" class="btn btn-danger" style="display:none" onclick="App.deletePortalFromModal()">删除通道</button>
@@ -1269,6 +1362,41 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
         <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
         <button class="btn btn-primary" onclick="App.saveUserItem()">保存账号</button>
       </div>
+    </div>
+  <!-- 11. 🚀 安全登录助手浮动胶囊 (用于直达外部/自有系统时安全速填与凭据复制) -->
+<div id="securityLoginDock" class="security-login-dock" style="display:none">
+  <div class="dock-header">
+    <div class="dock-title-wrap">
+      <span class="dock-icon">🛡️</span>
+      <div>
+        <div class="dock-title" id="dockSiteTitle">已直达目标平台</div>
+        <div class="dock-sub" id="dockSiteUrl">https://...</div>
+      </div>
+    </div>
+    <button class="dock-close-btn" onclick="App.closeSecurityDock()" title="关闭助手">✕</button>
+  </div>
+  <div class="dock-body">
+    <!-- 账号复制行 -->
+    <div class="dock-field-row" id="dockAccountRow" style="display:none">
+      <div class="dock-field-label">账号</div>
+      <div class="dock-field-value" id="dockAccountVal">--</div>
+      <button class="btn btn-sm btn-secondary dock-btn" onclick="App.copyDockCredential('account')">📋 复制</button>
+    </div>
+    <!-- 密码复制行 -->
+    <div class="dock-field-row" id="dockPasswordRow" style="display:none">
+      <div class="dock-field-label">密码</div>
+      <div class="dock-field-value dock-pass-val" id="dockPasswordVal">••••••••</div>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm btn-secondary dock-btn" onclick="App.toggleDockPassReveal()" title="查看/隐藏">👁️</button>
+        <button class="btn btn-sm btn-primary dock-btn" onclick="App.copyDockCredential('password')">📋 复制密码</button>
+      </div>
+    </div>
+    <!-- 提示与自动清空倒计时条 -->
+    <div class="dock-countdown-bar" id="dockCountdownBar">
+      <div class="dock-countdown-fill" id="dockCountdownFill"></div>
+    </div>
+    <div class="dock-footer-tip" id="dockFooterTip">
+      ⏱️ 剪贴板安全保护中 · 15 秒后自动抹除剪贴板
     </div>
   </div>
 </div>

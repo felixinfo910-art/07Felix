@@ -3,7 +3,7 @@
 
 class Database {
     private static $pdo = null;
-    const SCHEMA_VERSION = 4; // 当前数据库结构版本号 (v4: 强化公司主体与字段自愈)
+    const SCHEMA_VERSION = 5; // 当前数据库结构版本号 (v5: 支持站点与通道的安全加密凭据与免密/速填跳板)
 
     public static function getConnection() {
         if (self::$pdo === null) {
@@ -87,14 +87,14 @@ class Database {
         )");
 
         // 增量字段无损迁移
-        try { $db->exec("ALTER TABLE projects ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
-        try { $db->exec("ALTER TABLE projects ADD COLUMN readme TEXT"); } catch (Exception $e) {}
-        try { $db->exec("ALTER TABLE projects ADD COLUMN category TEXT DEFAULT '核心官网'"); } catch (Exception $e) {}
-        try { $db->exec("ALTER TABLE projects ADD COLUMN ssl_expire_date DATE"); } catch (Exception $e) {}
-        try { $db->exec("ALTER TABLE reimbursements ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
-        try { $db->exec("ALTER TABLE reimbursements ADD COLUMN project_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
-        try { $db->exec("ALTER TABLE renewals ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
-        try { $db->exec("ALTER TABLE renewals ADD COLUMN project_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
+        try { $db->exec("ALTER TABLE projects ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE projects ADD COLUMN readme TEXT"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE projects ADD COLUMN category TEXT DEFAULT '核心官网'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE projects ADD COLUMN ssl_expire_date DATE"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE reimbursements ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE reimbursements ADD COLUMN project_id INTEGER DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE renewals ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE renewals ADD COLUMN project_id INTEGER DEFAULT 0"); } catch (Throwable $e) {}
 
         // 网站项目跳转链接
         $db->exec("CREATE TABLE IF NOT EXISTS project_links (
@@ -104,9 +104,18 @@ class Database {
             url TEXT NOT NULL,
             type TEXT DEFAULT 'site', -- site(前台), admin(后台), server(宝塔/服务器), repo(代码), analytics(统计), other(其他)
             account_note TEXT,
+            login_account TEXT,
+            login_password_encrypted TEXT,
+            auto_login_type TEXT DEFAULT 'copy_and_jump', -- copy_and_jump(直达+安全复制速填), post_submit(自动POST免密), none(仅记录)
+            post_target_url TEXT,
             sort_order INTEGER DEFAULT 0,
             FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
         )");
+
+        try { $db->exec("ALTER TABLE project_links ADD COLUMN login_account TEXT"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE project_links ADD COLUMN login_password_encrypted TEXT"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE project_links ADD COLUMN auto_login_type TEXT DEFAULT 'copy_and_jump'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE project_links ADD COLUMN post_target_url TEXT"); } catch (Throwable $e) {}
 
         // 资产与到期续费
         $db->exec("CREATE TABLE IF NOT EXISTS renewals (
@@ -171,9 +180,18 @@ class Database {
             icon TEXT DEFAULT '⚡',
             category TEXT DEFAULT '常用业务',
             account_note TEXT,
+            login_account TEXT,
+            login_password_encrypted TEXT,
+            auto_login_type TEXT DEFAULT 'copy_and_jump', -- copy_and_jump(直达+安全复制速填), post_submit(自动POST免密), none(仅记录)
+            post_target_url TEXT,
             sort_order INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
+
+        try { $db->exec("ALTER TABLE quick_portals ADD COLUMN login_account TEXT"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE quick_portals ADD COLUMN login_password_encrypted TEXT"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE quick_portals ADD COLUMN auto_login_type TEXT DEFAULT 'copy_and_jump'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE quick_portals ADD COLUMN post_target_url TEXT"); } catch (Throwable $e) {}
 
         // 自动注入初始高频通道示范数据（国际站、1688、企业邮箱、跨境运单）
         try {
