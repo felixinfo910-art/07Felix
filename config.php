@@ -38,7 +38,7 @@ if (IS_PRODUCTION) {
     ini_set('display_errors', '0');
     ini_set('log_errors', '1');
     $logDir = __DIR__ . '/data';
-    if (is_dir($logDir)) {
+    if (is_dir($logDir) && is_writable($logDir)) {
         ini_set('error_log', $logDir . '/php_errors.log');
     }
 
@@ -52,6 +52,23 @@ if (IS_PRODUCTION) {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');
 }
+
+// 全局异常守护，防止致命错误导致 500 空白无响应
+set_exception_handler(function($e) {
+    $msg = $e->getMessage();
+    $file = basename($e->getFile());
+    $line = $e->getLine();
+    error_log("[Uncaught Exception] {$msg} in {$file}:{$line}");
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(500);
+    }
+    echo json_encode([
+        'success' => false,
+        'message' => "服务异常 [{$file}:{$line}]: " . $msg
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+});
 
 // 3. 安全启动会话
 if (session_status() === PHP_SESSION_NONE) {

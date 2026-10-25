@@ -23,6 +23,7 @@ if (!empty($rawInput)) {
 }
 $inputData = array_merge($_GET, $_POST, $inputData);
 
+try {
 switch ($action) {
     // ---------------- 系统与鉴权 ----------------
     case 'check_status':
@@ -730,4 +731,8 @@ switch ($action) {
     default:
         jsonResponse(false, null, '未知的操作请求');
         break;
+}
+} catch (Throwable $e) {
+    error_log("[API Error: {$action}] " . $e->getMessage());
+    jsonResponse(false, null, '请求处理失败: ' . $e->getMessage());
 }

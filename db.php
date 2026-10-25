@@ -3,13 +3,17 @@
 
 class Database {
     private static $pdo = null;
-    const SCHEMA_VERSION = 3; // 当前数据库结构版本号 (v3: 支持多账号登录与管理)
+    const SCHEMA_VERSION = 4; // 当前数据库结构版本号 (v4: 强化公司主体与字段自愈)
 
     public static function getConnection() {
         if (self::$pdo === null) {
+            if (!extension_loaded('pdo_sqlite')) {
+                throw new Exception("PHP 未安装或未启用 pdo_sqlite 扩展，请在宝塔 PHP 设置中安装 sqlite3/pdo_sqlite 扩展");
+            }
+
             $dbDir = __DIR__ . '/data';
             if (!is_dir($dbDir)) {
-                mkdir($dbDir, 0755, true);
+                @mkdir($dbDir, 0777, true);
             }
             $dbPath = $dbDir . '/workspace.db';
             $isNew = !file_exists($dbPath);
@@ -19,23 +23,26 @@ class Database {
                 self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 self::$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
                 
-                // 性能调优 1: 启用 WAL (Write-Ahead Logging) 极速并发读写，避免多请求锁库
-                self::$pdo->exec('PRAGMA journal_mode = WAL;');
-                self::$pdo->exec('PRAGMA synchronous = NORMAL;');
-                self::$pdo->exec('PRAGMA busy_timeout = 5000;');
+                // 性能调优 1: 启用 WAL (Write-Ahead Logging) 并发读写，避免多请求锁库
+                try {
+                    self::$pdo->exec('PRAGMA journal_mode = WAL;');
+                    self::$pdo->exec('PRAGMA synchronous = NORMAL;');
+                    self::$pdo->exec('PRAGMA busy_timeout = 5000;');
+                } catch (Throwable $pe) {}
                 
-                // 性能调优 2: 基于 user_version 的版本控制，只在有结构更新时执行迁移，杜绝每秒全表扫描
+                // 自愈检查：不仅依赖 user_version，还动态检查核心表 companies / admin_users 是否存在
+                $tables = self::$pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('companies', 'admin_users', 'projects')")->fetchAll(PDO::FETCH_COLUMN);
                 $dbVersion = (int)self::$pdo->query('PRAGMA user_version')->fetchColumn();
-                if ($isNew) {
+
+                if ($isNew || count($tables) < 3 || $dbVersion < self::SCHEMA_VERSION) {
                     self::initTables();
-                    self::seedInitialData();
-                    self::$pdo->exec('PRAGMA user_version = ' . self::SCHEMA_VERSION . ';');
-                } elseif ($dbVersion < self::SCHEMA_VERSION) {
-                    self::initTables();
+                    if ($isNew) {
+                        self::seedInitialData();
+                    }
                     self::$pdo->exec('PRAGMA user_version = ' . self::SCHEMA_VERSION . ';');
                 }
-            } catch (PDOException $e) {
-                die("数据库连接失败: " . $e->getMessage());
+            } catch (Throwable $e) {
+                throw new Exception("数据库连接或初始化失败: " . $e->getMessage());
             }
         }
         return self::$pdo;
