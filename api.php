@@ -26,33 +26,58 @@ $inputData = array_merge($_GET, $_POST, $inputData);
 switch ($action) {
     // ---------------- 系统与鉴权 ----------------
     case 'check_status':
-        $hasPassword = !empty(getConfig('access_password', ''));
         $isLoggedIn = !empty($_SESSION['auth_user']);
+        $currentUser = $_SESSION['auth_user_info'] ?? null;
         $theme = getConfig('theme', 'notion');
         $appTitle = getConfig('app_title', 'Felix 管理者工作台');
         jsonResponse(true, [
-            'has_password' => $hasPassword,
-            'is_logged_in' => $hasPassword ? $isLoggedIn : true,
+            'is_logged_in' => $isLoggedIn,
+            'current_user' => $currentUser,
             'theme' => $theme,
-            'app_title' => $appTitle
+            'app_title' => $appTitle,
+            'app_env' => defined('APP_ENV') ? APP_ENV : 'local'
         ]);
         break;
 
     case 'login':
+        $username = trim($inputData['username'] ?? '');
         $password = $inputData['password'] ?? '';
-        $storedPassword = getConfig('access_password', '');
-        if (empty($storedPassword) || $password === $storedPassword) {
+
+        if (empty($username) || empty($password)) {
+            jsonResponse(false, null, '请输入登录账号与密码');
+        }
+
+        $stmt = $db->prepare("SELECT * FROM admin_users WHERE username = ?");
+        $stmt->execute([$username]);
+        $user = $stmt->fetch();
+
+        if ($user && password_verify($password, $user['password_hash'])) {
             $_SESSION['auth_user'] = true;
-            jsonResponse(true, null, '登录成功');
+            $_SESSION['auth_user_info'] = [
+                'id' => $user['id'],
+                'username' => $user['username'],
+                'display_name' => $user['display_name'],
+                'role' => $user['role']
+            ];
+            $db->prepare("UPDATE admin_users SET last_login = datetime('now', 'localtime') WHERE id = ?")->execute([$user['id']]);
+            jsonResponse(true, $_SESSION['auth_user_info'], '登录成功');
         } else {
-            jsonResponse(false, null, '密码错误');
+            // 兼容性备用：若密码匹配旧 access_password
+            $storedPassword = getConfig('access_password', '');
+            if (!empty($storedPassword) && $password === $storedPassword && ($username === 'admin' || $username === 'felix')) {
+                $_SESSION['auth_user'] = true;
+                $_SESSION['auth_user_info'] = ['id' => 1, 'username' => 'admin', 'display_name' => 'Felix', 'role' => 'admin'];
+                jsonResponse(true, $_SESSION['auth_user_info'], '登录成功');
+            }
+            jsonResponse(false, null, '账号或密码错误，请核对后重试');
         }
         break;
 
     case 'logout':
         $_SESSION['auth_user'] = false;
+        unset($_SESSION['auth_user_info']);
         session_destroy();
-        jsonResponse(true, null, '已退出登录');
+        jsonResponse(true, null, '已安全退出登录');
         break;
 
     // ---------------- Dashboard 核心指标汇总 ----------------
@@ -597,6 +622,68 @@ switch ($action) {
         $id = (int)($inputData['id'] ?? 0);
         $db->prepare("DELETE FROM knowledge_docs WHERE id = ?")->execute([$id]);
         jsonResponse(true, null, '文档已删除');
+        break;
+
+    // ---------------- 管理者账号管理 ----------------
+    case 'get_users':
+        $users = $db->query("SELECT id, username, display_name, role, last_login, created_at FROM admin_users ORDER BY id ASC")->fetchAll();
+        jsonResponse(true, $users);
+        break;
+
+    case 'save_user':
+        $id = (int)($inputData['id'] ?? 0);
+        $username = trim($inputData['username'] ?? '');
+        $password = trim($inputData['password'] ?? '');
+        $displayName = trim($inputData['display_name'] ?? '管理者');
+        $role = trim($inputData['role'] ?? 'admin');
+
+        if (empty($username)) {
+            jsonResponse(false, null, '登录账号为必填项');
+        }
+
+        // 检查用户名冲突
+        $checkStmt = $db->prepare("SELECT id FROM admin_users WHERE username = ? AND id != ?");
+        $checkStmt->execute([$username, $id]);
+        if ($checkStmt->fetch()) {
+            jsonResponse(false, null, '该账号已被使用，请换一个名称');
+        }
+
+        if ($id > 0) {
+            if (!empty($password)) {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $db->prepare("UPDATE admin_users SET username = ?, password_hash = ?, display_name = ?, role = ? WHERE id = ?");
+                $stmt->execute([$username, $hash, $displayName, $role, $id]);
+            } else {
+                $stmt = $db->prepare("UPDATE admin_users SET username = ?, display_name = ?, role = ? WHERE id = ?");
+                $stmt->execute([$username, $displayName, $role, $id]);
+            }
+            if (!empty($_SESSION['auth_user_info']) && $_SESSION['auth_user_info']['id'] == $id) {
+                $_SESSION['auth_user_info']['username'] = $username;
+                $_SESSION['auth_user_info']['display_name'] = $displayName;
+            }
+        } else {
+            if (empty($password)) {
+                jsonResponse(false, null, '新建账号时初始密码不能为空');
+            }
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            $stmt = $db->prepare("INSERT INTO admin_users (username, password_hash, display_name, role) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$username, $hash, $displayName, $role]);
+            $id = $db->lastInsertId();
+        }
+        jsonResponse(true, ['id' => $id], '账号信息已保存');
+        break;
+
+    case 'delete_user':
+        $id = (int)($inputData['id'] ?? 0);
+        $totalUsers = (int)$db->query("SELECT COUNT(*) FROM admin_users")->fetchColumn();
+        if ($totalUsers <= 1) {
+            jsonResponse(false, null, '系统至少需保留一个管理员账号，不可全部删除');
+        }
+        if (!empty($_SESSION['auth_user_info']) && $_SESSION['auth_user_info']['id'] == $id) {
+            jsonResponse(false, null, '不能直接删除当前正在登录的账号');
+        }
+        $db->prepare("DELETE FROM admin_users WHERE id = ?")->execute([$id]);
+        jsonResponse(true, null, '账号已成功移除');
         break;
 
     // ---------------- 全局配置与偏好 ----------------

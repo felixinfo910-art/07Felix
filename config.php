@@ -94,12 +94,8 @@ function setConfig($key, $value) {
     return $stmt->execute([$key, $value]);
 }
 
-// 检查是否需要登录
+// 检查是否登录
 function checkAuth() {
-    $password = getConfig('access_password', '');
-    if (empty($password)) {
-        return true; // 未设密码则无需验证
-    }
     return !empty($_SESSION['auth_user']);
 }
 

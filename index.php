@@ -119,6 +119,15 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
           <span>🔍 搜索直达</span>
           <span class="kbd-shortcut">Ctrl K</span>
         </button>
+
+        <!-- 当前登录用户与退出按钮 -->
+        <div class="user-pill-wrap" style="display:flex;align-items:center;gap:6px">
+          <button class="btn btn-sm btn-secondary" onclick="App.switchTab('settings')" title="管理者账号管理" style="font-size:12px;padding:4px 10px">
+            <span>👤</span>
+            <span id="headerUserDisplayName">Felix</span>
+          </button>
+          <button class="btn btn-sm btn-secondary" onclick="App.logout()" title="安全退出登录" style="font-size:12px;padding:4px 8px;color:var(--text-muted)">退出</button>
+        </div>
       </div>
     </header>
 
@@ -626,9 +635,31 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
           <input type="text" id="cfgAppTitle" class="form-control">
         </div>
 
-        <div class="form-group">
-          <label class="form-label">线上专属访问密码锁 (留空则不开启验证，设置后手机与电脑都需要输入)</label>
-          <input type="password" id="cfgPassword" class="form-control" placeholder="设置你的专属安全口令">
+        <!-- 管理者账号管理 -->
+        <div style="margin:16px 0 20px 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div>
+              <div style="font-weight:600;font-size:14px;color:var(--text-main)">👤 管理者账号管理</div>
+              <div style="font-size:12px;color:var(--text-muted)">统一管理管理者与协同账号，支持修改账号密码</div>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="App.openAddUserModal()">+ 新增账号</button>
+          </div>
+
+          <div class="notion-table-container" style="margin-bottom:0">
+            <table class="notion-table">
+              <thead>
+                <tr>
+                  <th style="width:28%">登录账号 (用户名)</th>
+                  <th style="width:28%">展示昵称</th>
+                  <th style="width:26%">上次登录</th>
+                  <th style="text-align:right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text-muted)">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <hr style="margin:20px 0;border:none;border-top:1px solid var(--border-light)">
@@ -1180,18 +1211,64 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
   </div>
 </div>
 
-<!-- 9. 访问口令登录弹窗 -->
-<div id="loginModal" class="modal-overlay" style="display:none">
-  <div class="modal-dialog" style="max-width:380px">
+<!-- 9. 简洁账号登录弹窗 -->
+<div id="loginModal" class="modal-overlay" style="display:none;z-index:9999;backdrop-filter:blur(6px);background:rgba(0,0,0,0.45)">
+  <div class="modal-dialog" style="max-width:360px;box-shadow:var(--shadow-modal);border-radius:var(--radius-md)">
+    <div class="modal-header" style="justify-content:center;border-bottom:none;padding-top:24px;padding-bottom:6px">
+      <div style="text-align:center">
+        <div style="font-size:32px;margin-bottom:6px">📁</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text-main)" id="loginAppTitle"><?php echo htmlspecialchars($appTitle); ?></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">管理者工作台 · 安全验证</div>
+      </div>
+    </div>
+    <div class="modal-body" style="padding:16px 24px">
+      <div class="form-group">
+        <label class="form-label">登录账号</label>
+        <input type="text" id="loginUsernameInput" class="form-control" placeholder="输入账号 (默认: admin)" autocomplete="username" onkeydown="if(event.key==='Enter') document.getElementById('loginPasswordInput').focus()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">登录密码</label>
+        <input type="password" id="loginPasswordInput" class="form-control" placeholder="输入密码 (默认: felix123)" autocomplete="current-password" onkeydown="if(event.key==='Enter') App.submitLogin()">
+      </div>
+      <div id="loginErrorMsg" style="color:var(--danger-color);font-size:12px;display:none;margin-top:-6px;margin-bottom:10px;text-align:center"></div>
+    </div>
+    <div class="modal-footer" style="padding:0 24px 24px 24px;border-top:none;flex-direction:column;gap:8px">
+      <button class="btn btn-primary" style="width:100%;height:38px;font-size:14px" onclick="App.submitLogin()">登 录 ➔</button>
+      <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:4px;width:100%">
+        首次使用默认账号 <code>admin</code> 密码 <code>felix123</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 10. 管理者账号维护弹窗 -->
+<div id="userModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
+  <div class="modal-dialog" style="max-width:420px">
     <div class="modal-header">
-      <span>安全身份验证</span>
+      <span id="userModalTitleText">维护管理者账号</span>
+      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
     </div>
     <div class="modal-body">
-      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">工作台已开启访问保护，请输入管理者专属访问密码：</div>
-      <input type="password" id="loginPasswordInput" class="form-control" placeholder="输入密码" onkeydown="if(event.key==='Enter') App.submitLogin()">
+      <input type="hidden" id="userModalId">
+      <div class="form-group">
+        <label class="form-label">登录账号 (用户名) *</label>
+        <input type="text" id="userModalUsername" class="form-control" placeholder="如: admin 或 felix">
+      </div>
+      <div class="form-group">
+        <label class="form-label">展示昵称</label>
+        <input type="text" id="userModalDisplayName" class="form-control" placeholder="如: Felix (主理人)">
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="userModalPassLabel">登录密码</label>
+        <input type="password" id="userModalPassword" class="form-control" placeholder="留空则保持原密码不变">
+      </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" style="width:100%" onclick="App.submitLogin()">解锁工作台</button>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+      <button type="button" id="userModalDeleteBtn" class="btn btn-danger" style="display:none" onclick="App.deleteUserFromModal()">删除账号</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
+        <button class="btn btn-primary" onclick="App.saveUserItem()">保存账号</button>
+      </div>
     </div>
   </div>
 </div>

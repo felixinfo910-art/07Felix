@@ -3,7 +3,7 @@
 
 class Database {
     private static $pdo = null;
-    const SCHEMA_VERSION = 2; // 当前数据库结构版本号
+    const SCHEMA_VERSION = 3; // 当前数据库结构版本号 (v3: 支持多账号登录与管理)
 
     public static function getConnection() {
         if (self::$pdo === null) {
@@ -177,6 +177,31 @@ class Database {
                 $pStmt->execute(['1688 批发网', 'https://www.1688.com', '🛒', '采购供应链', '现货货源采购与工厂比价', 2]);
                 $pStmt->execute(['企业工作邮箱', 'https://mail.qq.com', '✉️', '协同通信', '日常外贸报价单与客户往来邮件', 3]);
                 $pStmt->execute(['17TRACK 全球查件', 'https://www.17track.net', '📦', '实用工具', '国际快递与海运提单轨迹追踪', 4]);
+            }
+        } catch (Exception $e) {}
+
+        // 系统管理员与账号表 (admin_users)
+        $db->exec("CREATE TABLE IF NOT EXISTS admin_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            display_name TEXT DEFAULT '管理者',
+            role TEXT DEFAULT 'admin',
+            last_login DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        // 自动注入初始默认管理员账号 (账号: admin / 密码: felix123)
+        try {
+            $userCount = $db->query("SELECT COUNT(*) AS total FROM admin_users")->fetch()['total'] ?: 0;
+            if ($userCount == 0) {
+                $uStmt = $db->prepare("INSERT INTO admin_users (username, password_hash, display_name, role) VALUES (?, ?, ?, ?)");
+                $uStmt->execute([
+                    'admin',
+                    password_hash('felix123', PASSWORD_DEFAULT),
+                    'Felix',
+                    'admin'
+                ]);
             }
         } catch (Exception $e) {}
 
