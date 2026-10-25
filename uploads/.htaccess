@@ -1,0 +1,9 @@
+# 安全防护：仅允许图片及PDF文档下载，严禁在上传目录解析执行任何脚本
+<FilesMatch "\.(php|php5|phtml|sh|bat|cgi|pl|py)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>

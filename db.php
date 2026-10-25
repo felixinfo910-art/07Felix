@@ -3,6 +3,7 @@
 
 class Database {
     private static $pdo = null;
+    const SCHEMA_VERSION = 2; // 当前数据库结构版本号
 
     public static function getConnection() {
         if (self::$pdo === null) {
@@ -18,11 +19,20 @@ class Database {
                 self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 self::$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
                 
+                // 性能调优 1: 启用 WAL (Write-Ahead Logging) 极速并发读写，避免多请求锁库
+                self::$pdo->exec('PRAGMA journal_mode = WAL;');
+                self::$pdo->exec('PRAGMA synchronous = NORMAL;');
+                self::$pdo->exec('PRAGMA busy_timeout = 5000;');
+                
+                // 性能调优 2: 基于 user_version 的版本控制，只在有结构更新时执行迁移，杜绝每秒全表扫描
+                $dbVersion = (int)self::$pdo->query('PRAGMA user_version')->fetchColumn();
                 if ($isNew) {
                     self::initTables();
                     self::seedInitialData();
-                } else {
+                    self::$pdo->exec('PRAGMA user_version = ' . self::SCHEMA_VERSION . ';');
+                } elseif ($dbVersion < self::SCHEMA_VERSION) {
                     self::initTables();
+                    self::$pdo->exec('PRAGMA user_version = ' . self::SCHEMA_VERSION . ';');
                 }
             } catch (PDOException $e) {
                 die("数据库连接失败: " . $e->getMessage());
@@ -75,7 +85,9 @@ class Database {
         try { $db->exec("ALTER TABLE projects ADD COLUMN category TEXT DEFAULT '核心官网'"); } catch (Exception $e) {}
         try { $db->exec("ALTER TABLE projects ADD COLUMN ssl_expire_date DATE"); } catch (Exception $e) {}
         try { $db->exec("ALTER TABLE reimbursements ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
+        try { $db->exec("ALTER TABLE reimbursements ADD COLUMN project_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
         try { $db->exec("ALTER TABLE renewals ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
+        try { $db->exec("ALTER TABLE renewals ADD COLUMN project_id INTEGER DEFAULT 0"); } catch (Exception $e) {}
 
         // 网站项目跳转链接
         $db->exec("CREATE TABLE IF NOT EXISTS project_links (
@@ -144,6 +156,30 @@ class Database {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
+        // 高频业务快速通道 (Quick Portals)
+        $db->exec("CREATE TABLE IF NOT EXISTS quick_portals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            icon TEXT DEFAULT '⚡',
+            category TEXT DEFAULT '常用业务',
+            account_note TEXT,
+            sort_order INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        // 自动注入初始高频通道示范数据（国际站、1688、企业邮箱、跨境运单）
+        try {
+            $portalCount = $db->query("SELECT COUNT(*) AS total FROM quick_portals")->fetch()['total'] ?: 0;
+            if ($portalCount == 0) {
+                $pStmt = $db->prepare("INSERT INTO quick_portals (title, url, icon, category, account_note, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
+                $pStmt->execute(['阿里巴巴国际站', 'https://seller.alibaba.com', '🌐', '外贸拓客', '主营店铺后台与海外询盘接待', 1]);
+                $pStmt->execute(['1688 批发网', 'https://www.1688.com', '🛒', '采购供应链', '现货货源采购与工厂比价', 2]);
+                $pStmt->execute(['企业工作邮箱', 'https://mail.qq.com', '✉️', '协同通信', '日常外贸报价单与客户往来邮件', 3]);
+                $pStmt->execute(['17TRACK 全球查件', 'https://www.17track.net', '📦', '实用工具', '国际快递与海运提单轨迹追踪', 4]);
+            }
+        } catch (Exception $e) {}
+
         // 自动注入初始示范公司
         try {
             $companyCount = $db->query("SELECT COUNT(*) AS total FROM companies")->fetch()['total'] ?: 0;
@@ -178,6 +214,15 @@ class Database {
         try {
             $db->exec("UPDATE project_links SET url = 'https://' || url WHERE url NOT LIKE 'http://%' AND url NOT LIKE 'https://%' AND url NOT LIKE '//%' AND url != ''");
             $db->exec("UPDATE renewals SET renew_url = 'https://' || renew_url WHERE renew_url IS NOT NULL AND renew_url != '' AND renew_url NOT LIKE 'http://%' AND renew_url NOT LIKE 'https://%' AND renew_url NOT LIKE '//%'");
+            $db->exec("UPDATE quick_portals SET url = 'https://' || url WHERE url NOT LIKE 'http://%' AND url NOT LIKE 'https://%' AND url NOT LIKE '//%' AND url != ''");
+        } catch (Exception $e) {}
+
+        // 高频业务查询索引优化
+        try {
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_renewals_expire ON renewals (expire_date)");
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_tasks_cat_status ON tasks (category, status)");
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_reimb_status_date ON reimbursements (status, pay_date)");
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_portals_sort ON quick_portals (sort_order)");
         } catch (Exception $e) {}
     }
 

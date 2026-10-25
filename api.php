@@ -290,7 +290,17 @@ switch ($action) {
     // ---------------- 续费雷达与一键转报销 ----------------
     case 'get_renewals':
         $today = date('Y-m-d');
-        $renewals = $db->query("SELECT * FROM renewals ORDER BY expire_date ASC")->fetchAll();
+        $sql = "SELECT r.*, 
+                       c.name AS company_name, 
+                       c.short_name AS company_short_name, 
+                       c.color AS company_color,
+                       p.name AS project_name,
+                       p.code AS project_code
+                FROM renewals r
+                LEFT JOIN companies c ON r.company_id = c.id
+                LEFT JOIN projects p ON r.project_id = p.id
+                ORDER BY r.expire_date ASC";
+        $renewals = $db->query($sql)->fetchAll();
         foreach ($renewals as &$r) {
             $days = (int)ceil((strtotime($r['expire_date']) - strtotime($today)) / 86400);
             $r['days_left'] = $days;
@@ -298,7 +308,7 @@ switch ($action) {
                 $r['status_level'] = 'expired'; // 已过期
             } elseif ($days <= 7) {
                 $r['status_level'] = 'danger';  // 极度紧急
-            } elseif ($days <= (int)$r['remind_days']) {
+            } elseif ($days <= (int)($r['remind_days'] ?: 30)) {
                 $r['status_level'] = 'warning'; // 重点关注
             } else {
                 $r['status_level'] = 'normal';  // 充裕安全
@@ -309,6 +319,8 @@ switch ($action) {
 
     case 'save_renewal':
         $id = (int)($inputData['id'] ?? 0);
+        $companyId = (int)($inputData['company_id'] ?? 0);
+        $projectId = (int)($inputData['project_id'] ?? 0);
         $name = trim($inputData['name'] ?? '');
         $category = $inputData['category'] ?? 'domain';
         $provider = trim($inputData['provider'] ?? '');
@@ -326,11 +338,11 @@ switch ($action) {
         }
 
         if ($id > 0) {
-            $stmt = $db->prepare("UPDATE renewals SET name = ?, category = ?, provider = ?, expire_date = ?, renew_url = ?, cost = ?, account_note = ?, remind_days = ? WHERE id = ?");
-            $stmt->execute([$name, $category, $provider, $expireDate, $renewUrl, $cost, $accountNote, $remindDays, $id]);
+            $stmt = $db->prepare("UPDATE renewals SET company_id = ?, project_id = ?, name = ?, category = ?, provider = ?, expire_date = ?, renew_url = ?, cost = ?, account_note = ?, remind_days = ? WHERE id = ?");
+            $stmt->execute([$companyId, $projectId, $name, $category, $provider, $expireDate, $renewUrl, $cost, $accountNote, $remindDays, $id]);
         } else {
-            $stmt = $db->prepare("INSERT INTO renewals (name, category, provider, expire_date, renew_url, cost, account_note, remind_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $category, $provider, $expireDate, $renewUrl, $cost, $accountNote, $remindDays]);
+            $stmt = $db->prepare("INSERT INTO renewals (company_id, project_id, name, category, provider, expire_date, renew_url, cost, account_note, remind_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$companyId, $projectId, $name, $category, $provider, $expireDate, $renewUrl, $cost, $accountNote, $remindDays]);
             $id = $db->lastInsertId();
         }
         jsonResponse(true, ['id' => $id], '续费项已保存');
@@ -369,8 +381,10 @@ switch ($action) {
         if ($doReimburse && $amount > 0) {
             $reimbTitle = "续费垫付: " . ($renewalItem ? $renewalItem['name'] : '资产续费');
             $fullRemark = "续期至: {$newExpireDate}。" . ($remark ? " 备注: {$remark}" : '');
-            $insReimb = $db->prepare("INSERT INTO reimbursements (title, amount, pay_date, pay_method, status, invoice_img, remark, renewal_id) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)");
-            $insReimb->execute([$reimbTitle, $amount, date('Y-m-d'), $payMethod, $invoiceImg, $fullRemark, $renewalId]);
+            $companyId = $renewalItem ? (int)($renewalItem['company_id'] ?? 0) : 0;
+            $projectId = $renewalItem ? (int)($renewalItem['project_id'] ?? 0) : 0;
+            $insReimb = $db->prepare("INSERT INTO reimbursements (title, amount, pay_date, pay_method, status, invoice_img, remark, renewal_id, company_id, project_id) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)");
+            $insReimb->execute([$reimbTitle, $amount, date('Y-m-d'), $payMethod, $invoiceImg, $fullRemark, $renewalId, $companyId, $projectId]);
             jsonResponse(true, null, '续期成功，已同步生成一笔待提报的垫资报销单！');
         }
 
@@ -508,6 +522,47 @@ switch ($action) {
         $id = (int)($inputData['id'] ?? 0);
         $db->prepare("DELETE FROM tasks WHERE id = ?")->execute([$id]);
         jsonResponse(true, null, '任务已删除');
+        break;
+
+    // ---------------- 高频业务快速通道 ----------------
+    case 'get_quick_portals':
+        $portals = $db->query("SELECT * FROM quick_portals ORDER BY sort_order ASC, id ASC")->fetchAll();
+        jsonResponse(true, $portals);
+        break;
+
+    case 'save_quick_portal':
+        $id = (int)($inputData['id'] ?? 0);
+        $title = trim($inputData['title'] ?? '');
+        $url = trim($inputData['url'] ?? '');
+        $icon = trim($inputData['icon'] ?? '⚡');
+        $category = trim($inputData['category'] ?? '常用业务');
+        $accountNote = trim($inputData['account_note'] ?? '');
+        $sortOrder = (int)($inputData['sort_order'] ?? 0);
+
+        if (empty($title) || empty($url)) {
+            jsonResponse(false, null, '平台名称和网址链接均为必填项');
+        }
+
+        // 规范化 URL 协议
+        if (!preg_match('/^(https?:)?\/\//i', $url)) {
+            $url = 'https://' . $url;
+        }
+
+        if ($id > 0) {
+            $stmt = $db->prepare("UPDATE quick_portals SET title = ?, url = ?, icon = ?, category = ?, account_note = ?, sort_order = ? WHERE id = ?");
+            $stmt->execute([$title, $url, $icon, $category, $accountNote, $sortOrder, $id]);
+        } else {
+            $stmt = $db->prepare("INSERT INTO quick_portals (title, url, icon, category, account_note, sort_order) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$title, $url, $icon, $category, $accountNote, $sortOrder]);
+            $id = $db->lastInsertId();
+        }
+        jsonResponse(true, ['id' => $id], '快速通道已保存');
+        break;
+
+    case 'delete_quick_portal':
+        $id = (int)($inputData['id'] ?? 0);
+        $db->prepare("DELETE FROM quick_portals WHERE id = ?")->execute([$id]);
+        jsonResponse(true, null, '快速通道已成功移除');
         break;
 
     // ---------------- 知识库文档 ----------------

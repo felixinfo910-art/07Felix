@@ -585,20 +585,30 @@ a {
   color: var(--text-muted);
 }
 
-/* 通用按钮 */
+/* 通用按钮系统 - 工业级极简与防变形规范 */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
+  line-height: 1.4;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.15s ease;
   border: 1px solid transparent;
   background: none;
+  white-space: nowrap;          /* 关键防变形：绝对禁止文字折行或被挤扁 */
+  flex-shrink: 0;               /* 关键防变形：在 flex 容器中禁止被自动挤压 */
+  box-sizing: border-box;
+  text-decoration: none;
+  user-select: none;
+}
+
+.btn:active {
+  transform: translateY(1px);
 }
 
 .btn-primary {
@@ -607,7 +617,7 @@ a {
 }
 
 .btn-primary:hover {
-  opacity: 0.9;
+  opacity: 0.88;
 }
 
 .btn-secondary {
@@ -618,6 +628,7 @@ a {
 
 .btn-secondary:hover {
   background-color: var(--bg-hover);
+  border-color: var(--text-secondary);
 }
 
 .btn-accent {
@@ -631,9 +642,48 @@ a {
   border-color: rgba(190, 56, 56, 0.2);
 }
 
+.btn-danger:hover {
+  background-color: #BE3838;
+  color: #fff;
+  border-color: #BE3838;
+}
+
+/* 小按钮规格 (表格操作、工具条常用) */
 .btn-sm {
-  padding: 4px 8px;
+  padding: 3px 9px;
   font-size: 12px;
+  height: 26px;
+  line-height: 18px;
+  border-radius: 4px;
+}
+
+/* 超小微型按钮 */
+.btn-xs {
+  padding: 2px 6px;
+  font-size: 11.5px;
+  height: 22px;
+  line-height: 16px;
+  border-radius: 3px;
+}
+
+/* 表格操作列专属容器，水平紧凑排列，严禁挤压换行 */
+.table-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+/* 分类药丸筛选按钮 - 极简利落 */
+.proj-filter-btn, .renewal-cat-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 12px;
+  padding: 3px 10px;
+  height: 26px;
+  border-radius: 13px;
 }
 
 /* 网站项目跳板卡片 */
@@ -686,13 +736,15 @@ a {
   position: relative;
   border-radius: var(--radius-sm);
   transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .launcher-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 5px;
+  padding: 5px 10px;
   font-size: 12.5px;
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
   background-color: var(--bg-subtle);
@@ -700,6 +752,8 @@ a {
   border-right: none;
   color: var(--text-main);
   transition: all 0.15s ease;
+  white-space: nowrap;
+  text-decoration: none;
 }
 
 .launcher-btn:hover {
@@ -711,7 +765,7 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 6px;
+  padding: 5px 7px;
   font-size: 11px;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background-color: var(--bg-subtle);
@@ -720,6 +774,7 @@ a {
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .launcher-edit-btn:hover {
@@ -1176,4 +1231,156 @@ a {
 .hover-underline:hover {
   text-decoration: underline;
   color: var(--accent-color);
+}
+
+/* ===================================================================
+   高频业务快速通道 (Quick Portals) - 极简高密度微磁贴规范
+=================================================================== */
+.quick-portals-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 20px;
+}
+
+.quick-portals-bar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.quick-portals-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.quick-portals-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.portal-filter-bar {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.portal-pill-btn {
+  font-size: 11.5px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.portal-pill-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.portal-pill-btn.active {
+  background: var(--bg-subtle);
+  border-color: var(--border-medium);
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.quick-portals-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+}
+
+.portal-chip-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--bg-page);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+  overflow: hidden;
+}
+
+.portal-chip-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-notion);
+}
+
+.portal-chip-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  text-decoration: none;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.portal-chip-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.portal-chip-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-chip-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portal-chip-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.portal-chip-edit-btn {
+  opacity: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: opacity 0.12s ease, background 0.12s ease;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.portal-chip-item:hover .portal-chip-edit-btn {
+  opacity: 1;
+}
+
+.portal-chip-edit-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-main);
 }

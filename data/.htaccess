@@ -1,0 +1,7 @@
+# 严禁任何外部 HTTP 请求直接下载 SQLite 数据库与错误日志
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Deny from all
+</IfModule>

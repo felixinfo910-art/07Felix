@@ -2,6 +2,8 @@
 require_once __DIR__ . '/config.php';
 $appTitle = getConfig('app_title', 'Felix 管理者工作台');
 $theme = getConfig('theme', 'notion');
+$cssVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/css/app.css') ? filemtime(__DIR__ . '/css/app.css') : '1.0') : time();
+$jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR__ . '/js/app.js') : '1.0') : time();
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="<?php echo htmlspecialchars($theme); ?>">
@@ -16,7 +18,7 @@ $theme = getConfig('theme', 'notion');
   <meta name="apple-mobile-web-app-title" content="管理工作台">
   <meta name="theme-color" content="#F7F6F3">
   
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css?v=<?php echo $cssVer; ?>">
 </head>
 <body>
 
@@ -131,7 +133,7 @@ $theme = getConfig('theme', 'notion');
           <span style="font-size:18px">🚨</span>
           <span id="urgentBannerText"><strong>急迫提醒：</strong>有核心资产将在 7 天内到期！</span>
         </div>
-        <button class="btn btn-sm btn-primary" onclick="App.switchTab('renewals')">立刻查看 ➔</button>
+        <button class="btn btn-sm btn-primary" onclick="App.switchTab('renewals')">立刻查看</button>
       </div>
 
       <!-- 核心指标卡片 -->
@@ -182,7 +184,7 @@ $theme = getConfig('theme', 'notion');
               <span>🚨</span>
               <span class="section-title" style="font-size: 15px;">近期急迫到期资产</span>
             </div>
-            <button class="btn btn-sm btn-secondary" onclick="App.switchTab('renewals')">全部资产 ➔</button>
+            <button class="btn btn-sm btn-secondary" onclick="App.switchTab('renewals')">全部资产</button>
           </div>
           <div id="dashUrgentList">
             <div style="color:var(--text-muted);font-size:13px;padding:8px 0;">加载中...</div>
@@ -196,7 +198,7 @@ $theme = getConfig('theme', 'notion');
               <span>📝</span>
               <span class="section-title" style="font-size: 15px;">今日行动清单</span>
             </div>
-            <button class="btn btn-sm btn-secondary" onclick="App.openAddTaskModal('daily')">+ 记待办</button>
+            <button class="btn btn-sm btn-secondary" onclick="App.openAddTaskModal('daily')">记待办</button>
           </div>
           <div id="dashTodayTasks">
             <div style="color:var(--text-muted);font-size:13px;padding:8px 0;">加载中...</div>
@@ -214,7 +216,7 @@ $theme = getConfig('theme', 'notion');
             <div class="section-title">网站项目总控矩阵</div>
             <div class="section-subtitle">高密度管理全量网站通道，点击任意项目进入专属工作间与自写说明书</div>
           </div>
-          <button class="btn btn-primary" onclick="App.openAddProjectModal()">+ 新增网站项目</button>
+          <button class="btn btn-primary" onclick="App.openAddProjectModal()">新增项目</button>
         </div>
 
         <!-- 顶部过滤与搜索条 -->
@@ -257,7 +259,7 @@ $theme = getConfig('theme', 'notion');
                 <th style="width:12%">SSL 证书到期</th>
                 <th style="width:8%">直达入口</th>
                 <th style="width:7%">说明书</th>
-                <th style="width:8%;text-align:right">操作</th>
+                <th style="min-width:140px;text-align:right">操作</th>
               </tr>
             </thead>
             <tbody id="projectsTableBody">
@@ -272,7 +274,7 @@ $theme = getConfig('theme', 'notion');
         <!-- 顶部返回与项目标题栏 -->
         <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:14px 18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow-notion);flex-wrap:wrap;gap:12px">
           <div style="display:flex;align-items:center;gap:12px">
-            <button class="btn btn-sm btn-secondary" onclick="App.backToProjectsOverview()">← 返回项目矩阵</button>
+            <button class="btn btn-sm btn-secondary" onclick="App.backToProjectsOverview()">返回项目列表</button>
             <div style="font-size:14px;color:var(--text-muted)">/</div>
             <div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -286,8 +288,8 @@ $theme = getConfig('theme', 'notion');
             </div>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button id="btnCopyCompanyInvoice" class="btn btn-sm btn-secondary" style="display:none" onclick="App.copyCurrentProjectCompanyInvoice()" title="一键复制开票抬头、税号及银行账户">📋 复制公司开票信息</button>
-            <button class="btn btn-sm btn-secondary" onclick="App.openAddLinkModal(App.state.currentChannelProjectId)">+ 添加入口</button>
+            <button id="btnCopyCompanyInvoice" class="btn btn-sm btn-secondary" style="display:none" onclick="App.copyCurrentProjectCompanyInvoice()" title="一键复制开票抬头、税号及银行账户">复制开票信息</button>
+            <button class="btn btn-sm btn-secondary" onclick="App.openAddLinkModal(App.state.currentChannelProjectId)">添加入口</button>
             <button class="btn btn-sm btn-secondary" onclick="App.openEditProjectModal(App.state.currentChannelProjectId)">项目设置</button>
           </div>
         </div>
@@ -313,7 +315,7 @@ $theme = getConfig('theme', 'notion');
             </div>
             <div style="display:flex;gap:8px">
               <button id="btnTplReadme" class="btn btn-sm btn-secondary" style="display:none" onclick="App.applyReadmeTemplate()">套用规范模版</button>
-              <button id="btnToggleEditReadme" class="btn btn-sm btn-primary" onclick="App.toggleEditChannelReadme()">✏️ 编辑说明书</button>
+              <button id="btnToggleEditReadme" class="btn btn-sm btn-primary" onclick="App.toggleEditChannelReadme()">编辑说明书</button>
             </div>
           </div>
 
@@ -338,7 +340,7 @@ $theme = getConfig('theme', 'notion');
 - 数据库端口仅开放给内部 VPN IP 访问"></textarea>
             <div style="display:flex;justify-content:flex-end;gap:8px">
               <button class="btn btn-secondary" onclick="App.cancelEditChannelReadme()">取消</button>
-              <button class="btn btn-primary" onclick="App.saveChannelReadme()">💾 保存说明书</button>
+              <button class="btn btn-primary" onclick="App.saveChannelReadme()">保存说明书</button>
             </div>
           </div>
         </div>
@@ -357,27 +359,109 @@ $theme = getConfig('theme', 'notion');
     <section id="panel-renewals" class="tab-panel">
       <div class="section-header">
         <div>
-          <div class="section-title">资产与到期续费雷达</div>
-          <div class="section-subtitle">域名、云服务器、SSL证书、SaaS订阅生命周期跟踪；一键直达续费后台，续费后一键转个人垫资报销</div>
+          <div class="section-title">资产与到期续费雷达 (Renewal Radar)</div>
+          <div class="section-subtitle">域名、云服务器、SSL证书、SaaS订阅全生命周期监控；官网后台一键直达，续费后一键转个人垫资报销</div>
         </div>
-        <button class="btn btn-primary" onclick="App.openAddRenewalModal()">+ 新增续费项</button>
+        <button class="btn btn-primary" onclick="App.openAddRenewalModal()">新增资产</button>
       </div>
 
+      <!-- 核心雷达指标看板 KPI Grid -->
+      <div class="kpi-grid" style="margin-bottom: 18px;">
+        <div class="kpi-card" style="border-left: 3px solid var(--danger-color); cursor: pointer;" onclick="App.filterRenewalsByStatus('danger')" title="点击筛选7天内紧急资产">
+          <div class="kpi-header">
+            <span class="kpi-title">7天内紧急临期</span>
+            <span class="kpi-icon">🚨</span>
+          </div>
+          <div class="kpi-value"><span id="radarUrgentCount">0</span><span class="kpi-unit">个资产</span></div>
+          <div class="kpi-footer">面临断服/赎回风险，需即刻处理</div>
+        </div>
+
+        <div class="kpi-card" style="border-left: 3px solid var(--tag-orange-text); cursor: pointer;" onclick="App.filterRenewalsByStatus('warning')" title="点击筛选30天内预警资产">
+          <div class="kpi-header">
+            <span class="kpi-title">30天内预警</span>
+            <span class="kpi-icon">⚠️</span>
+          </div>
+          <div class="kpi-value"><span id="radarWarningCount">0</span><span class="kpi-unit">个资产</span></div>
+          <div class="kpi-footer">建议本月提上日程安排续约</div>
+        </div>
+
+        <div class="kpi-card" style="border-left: 3px solid var(--accent-color); cursor: pointer;" onclick="App.filterRenewalsByStatus('all')" title="点击查看纳管全量资产">
+          <div class="kpi-header">
+            <span class="kpi-title">纳管资产总项</span>
+            <span class="kpi-icon">🌐</span>
+          </div>
+          <div class="kpi-value"><span id="radarTotalCount">0</span><span class="kpi-unit">项资产</span></div>
+          <div class="kpi-footer">域名/服务器/证书/SaaS全量</div>
+        </div>
+
+        <div class="kpi-card" style="border-left: 3px solid var(--success-color)">
+          <div class="kpi-header">
+            <span class="kpi-title">预估年化续费预算</span>
+            <span class="kpi-icon">💰</span>
+          </div>
+          <div class="kpi-value"><span id="radarTotalCost">￥0.00</span></div>
+          <div class="kpi-footer">纳管资产周期性年支出总计</div>
+        </div>
+      </div>
+
+      <!-- 顶部多维筛选与搜索工具条 -->
+      <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px">
+        <!-- 分类药丸按钮组 -->
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div id="renewalCategoryFilter" style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-primary renewal-cat-btn" data-cat="all" onclick="App.filterRenewalsByCategory('all')">全部 (<span id="radarCatCountAll">0</span>)</button>
+            <button class="btn btn-sm btn-secondary renewal-cat-btn" data-cat="domain" onclick="App.filterRenewalsByCategory('domain')">域名 (<span id="radarCatCountDomain">0</span>)</button>
+            <button class="btn btn-sm btn-secondary renewal-cat-btn" data-cat="server" onclick="App.filterRenewalsByCategory('server')">云服务器 (<span id="radarCatCountServer">0</span>)</button>
+            <button class="btn btn-sm btn-secondary renewal-cat-btn" data-cat="ssl" onclick="App.filterRenewalsByCategory('ssl')">SSL证书 (<span id="radarCatCountSsl">0</span>)</button>
+            <button class="btn btn-sm btn-secondary renewal-cat-btn" data-cat="saas" onclick="App.filterRenewalsByCategory('saas')">软件订阅 (<span id="radarCatCountSaas">0</span>)</button>
+            <button class="btn btn-sm btn-secondary renewal-cat-btn" data-cat="other" onclick="App.filterRenewalsByCategory('other')">其他 (<span id="radarCatCountOther">0</span>)</button>
+          </div>
+
+          <!-- 紧急度状态筛选下拉 -->
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;color:var(--text-muted)">⚡ 紧急度:</span>
+            <select id="renewalStatusFilterSelect" class="form-control" style="width:auto;padding:3px 8px;font-size:12px" onchange="App.filterRenewalsByStatus(this.value)">
+              <option value="all">全部生命周期</option>
+              <option value="danger">🚨 7天内紧急</option>
+              <option value="warning">⚠️ 30天内预警</option>
+              <option value="normal">🟢 充裕正常</option>
+              <option value="expired">⚫ 已逾期</option>
+            </select>
+          </div>
+
+          <!-- 按公司主体筛选下拉 -->
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;color:var(--text-muted)">🏢 归属主体:</span>
+            <select id="renewalCompanyFilterSelect" class="form-control" style="width:auto;padding:3px 8px;font-size:12px" onchange="App.filterRenewalsByCompany(this.value)">
+              <option value="all">全部公司主体</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 实时快速搜索框 -->
+        <div style="display:flex;align-items:center;gap:6px;min-width:240px">
+          <span style="font-size:13px;color:var(--text-muted)">🔍</span>
+          <input type="text" id="renewalSearchInput" class="form-control" placeholder="按资产名称/服务商/账号备忘筛选..." style="padding:4px 8px;font-size:12.5px" oninput="App.filterRenewalsByQuery(this.value)">
+        </div>
+      </div>
+
+      <!-- 高密度资产表格 -->
       <div class="notion-table-container">
         <table class="notion-table">
           <thead>
             <tr>
-              <th>资产/域名名称</th>
-              <th>类型</th>
-              <th>服务商</th>
-              <th>到期日期</th>
-              <th>剩余时间</th>
-              <th>预估金额</th>
-              <th>操作直达</th>
+              <th style="width:20%">资产 / 域名名称</th>
+              <th style="width:14%">归属主体 / 关联项目</th>
+              <th style="width:9%">类型分类</th>
+              <th style="width:10%">注册 / 托管商</th>
+              <th style="width:11%">到期日期</th>
+              <th style="width:12%">生命周期雷达</th>
+              <th style="width:8%">续费预估</th>
+              <th style="min-width:190px;text-align:right">操作</th>
             </tr>
           </thead>
           <tbody id="renewalsTableBody">
-            <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">加载中...</td></tr>
+            <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">加载中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -390,21 +474,38 @@ $theme = getConfig('theme', 'notion');
           <div class="section-title">个人垫资与发票报销管家</div>
           <div class="section-subtitle">手机随手拍照上传发票/扣费凭证，状态全程流转跟踪，告别自掏腰包漏报销</div>
         </div>
-        <button class="btn btn-primary" onclick="App.openAddReimbModal()">+ 记一笔垫资 (传发票)</button>
+        <button class="btn btn-primary" onclick="App.openAddReimbModal()">记一笔垫资</button>
       </div>
       <div id="reimbContainer" class="reimb-cards-grid"></div>
     </section>
 
     <!-- ==================== TAB 5: TASKS 事务统筹 ==================== -->
     <section id="panel-tasks" class="tab-panel">
-      <div class="section-header">
+      <!-- 极简高频业务直达 -->
+      <div class="quick-portals-bar">
+        <div class="quick-portals-bar-head">
+          <div class="quick-portals-bar-title">
+            <span>⚡</span>
+            <span>常用直达</span>
+          </div>
+          <div class="quick-portals-bar-actions">
+            <div id="portalCategoryFilter" class="portal-filter-bar"></div>
+            <button class="btn btn-sm btn-secondary" onclick="App.openAddPortalModal()" style="font-size:12px;padding:3px 8px">+ 添加</button>
+          </div>
+        </div>
+        <div id="quickPortalsGrid" class="quick-portals-chips">
+          <div style="color:var(--text-muted);font-size:12px;padding:8px 0;">加载中...</div>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-top:24px">
         <div>
           <div class="section-title">事务与长远任务统筹</div>
           <div class="section-subtitle">兼顾今日日常琐事（勾选归档）与跨周期战略项目（百分比进度推进）</div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary" onclick="App.openAddTaskModal('daily')">+ 记今日待办</button>
-          <button class="btn btn-primary" onclick="App.openAddTaskModal('milestone')">+ 建立长远里程碑</button>
+          <button class="btn btn-secondary" onclick="App.openAddTaskModal('daily')">记待办</button>
+          <button class="btn btn-primary" onclick="App.openAddTaskModal('milestone')">新建里程碑</button>
         </div>
       </div>
 
@@ -433,8 +534,8 @@ $theme = getConfig('theme', 'notion');
           <div class="section-subtitle">沉淀公司规章、业务 SOP、技术运维要点；支持 AI 智能问答、一键拆解杂乱想法、自动起草管理周报</div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-secondary" onclick="App.sendAiMessage('parse_task')">🤖 让 AI 帮我拆任务</button>
-          <button class="btn btn-secondary" onclick="App.sendAiMessage('weekly_report')">📊 一键生成管理周报</button>
+          <button class="btn btn-secondary" onclick="App.sendAiMessage('parse_task')">AI 拆解任务</button>
+          <button class="btn btn-secondary" onclick="App.sendAiMessage('weekly_report')">生成管理周报</button>
         </div>
       </div>
 
@@ -443,7 +544,7 @@ $theme = getConfig('theme', 'notion');
         <div class="kb-sidebar">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
             <span style="font-weight:600;font-size:13px">知识文档分类</span>
-            <button class="btn btn-sm btn-secondary" onclick="App.resetKbForm()">+ 写文档</button>
+            <button class="btn btn-sm btn-secondary" onclick="App.resetKbForm()">写文档</button>
           </div>
           <div id="kbDocsList" style="flex:1;overflow-y:auto"></div>
         </div>
@@ -487,7 +588,7 @@ $theme = getConfig('theme', 'notion');
           <div class="section-title">公司主体与实体统筹</div>
           <div class="section-subtitle">维护各公司主体执照信息、开票抬头、税号与对公账户；网站、资产与垫资报销按公司归类统筹</div>
         </div>
-        <button class="btn btn-primary" onclick="App.openAddCompanyModal()">+ 新增公司主体</button>
+        <button class="btn btn-primary" onclick="App.openAddCompanyModal()">新增公司主体</button>
       </div>
 
       <div class="notion-table-container">
@@ -499,7 +600,7 @@ $theme = getConfig('theme', 'notion');
               <th style="width:18%">纳税人识别号 (税号)</th>
               <th style="width:20%">开户银行及账号</th>
               <th style="width:12%">统筹纳管统计</th>
-              <th style="width:12%;text-align:right">操作</th>
+              <th style="min-width:140px;text-align:right">操作</th>
             </tr>
           </thead>
           <tbody id="companiesTableBody">
@@ -552,6 +653,34 @@ $theme = getConfig('theme', 'notion');
         <div class="form-group">
           <label class="form-label">AI 幕僚系统人设提示词 (System Prompt)</label>
           <textarea id="cfgAiPrompt" class="form-control" rows="3"></textarea>
+        </div>
+
+        <hr style="margin:20px 0;border:none;border-top:1px solid var(--border-light)">
+
+        <div style="font-weight:600;font-size:14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span>🖥️</span><span>运行环境与宝塔部署</span>
+          </div>
+          <span class="badge-status <?php echo IS_PRODUCTION ? 'normal' : 'warning'; ?>">
+            <?php echo IS_PRODUCTION ? '🟢 线上生产模式' : '🟡 本地开发模式'; ?>
+          </span>
+        </div>
+
+        <div style="background:var(--bg-subtle);border-radius:var(--radius-sm);padding:12px 14px;font-size:12.5px;line-height:1.6;color:var(--text-secondary);margin-bottom:14px">
+          <div>• <strong>当前环境</strong>：<code><?php echo htmlspecialchars(APP_ENV); ?></code> (可在根目录 <code>.env</code> 中指定 <code>APP_ENV=production</code> 或 <code>local</code>)</div>
+          <div>• <strong>数据库引擎</strong>：SQLite 3 (WAL 极速并发读写已就绪，版本: <?php echo Database::SCHEMA_VERSION; ?>)</div>
+          <div>• <strong>宝塔一键热更新</strong>：服务器终端执行 <code>bash update.sh</code> 或 <code>git pull</code> 即可平滑升级</div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" style="display:flex;justify-content:space-between">
+            <span>宝塔 Nginx 关键安全防护规则 (在宝塔面板-网站设置-配置文件中添加)</span>
+            <span style="font-size:11px;color:var(--text-muted)">防数据库被外部恶意下载</span>
+          </label>
+          <pre style="background:var(--bg-page);border:1px solid var(--border-light);padding:10px 12px;border-radius:var(--radius-sm);font-size:11.5px;color:var(--text-main);overflow-x:auto;user-select:all;margin:0">location ~ ^/(data|uploads/.*\.php|\.git|\.env|.*\.sh|.*\.bat) {
+    deny all;
+    return 404;
+}</pre>
         </div>
       </div>
     </section>
@@ -650,7 +779,7 @@ $theme = getConfig('theme', 'notion');
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
-      <button class="btn btn-primary" onclick="App.submitRenewAndReimburse()">确认续期并同步报销</button>
+      <button class="btn btn-primary" onclick="App.submitRenewAndReimburse()">确认续期报销</button>
     </div>
   </div>
 </div>
@@ -707,7 +836,7 @@ $theme = getConfig('theme', 'notion');
       <div id="projModalLinksSection" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-light)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <label class="form-label" style="font-weight:600;margin-bottom:0">已纳管的直达入口 (<span id="projModalLinksCount">0</span> 个)</label>
-          <button type="button" class="btn btn-sm btn-secondary" onclick="App.openAddLinkModal(document.getElementById('projModalId').value)">+ 添加入口</button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="App.openAddLinkModal(document.getElementById('projModalId').value)">添加入口</button>
         </div>
         <div id="projModalLinksList" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto"></div>
       </div>
@@ -818,14 +947,26 @@ $theme = getConfig('theme', 'notion');
 <div id="renewalModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
   <div class="modal-dialog">
     <div class="modal-header">
-      <span>资产与续费维护</span>
+      <span id="renewalModalTitleText">资产与续费维护</span>
       <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="renewalEditId">
       <div class="form-group">
         <label class="form-label">资产名称</label>
-        <input type="text" id="renewalEditName" class="form-control" placeholder="如：主域名 (example.com)">
+        <input type="text" id="renewalEditName" class="form-control" placeholder="如：主域名 (example.com) 或 核心生产服务器">
+      </div>
+      <div class="form-group">
+        <label class="form-label">所属公司主体 (用于多实体资产核算与发票归集)</label>
+        <select id="renewalEditCompanyId" class="form-control">
+          <option value="0">-- 暂不归属特定主体 (公共/通用) --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">关联网站项目 (可选，在项目工作台通道中将自动展示联动)</label>
+        <select id="renewalEditProjectId" class="form-control">
+          <option value="0">-- 暂不关联特定网站项目 (独立资产) --</option>
+        </select>
       </div>
       <div class="form-group">
         <label class="form-label">分类</label>
@@ -839,11 +980,23 @@ $theme = getConfig('theme', 'notion');
       </div>
       <div class="form-group">
         <label class="form-label">注册/托管服务商</label>
-        <input type="text" id="renewalEditProvider" class="form-control" placeholder="如：阿里云、腾讯云、Godaddy、Notion">
+        <input type="text" id="renewalEditProvider" class="form-control" placeholder="如：阿里云、腾讯云、Godaddy、Notion、AWS">
       </div>
-      <div class="form-group">
-        <label class="form-label">到期日期</label>
-        <input type="date" id="renewalEditExpireDate" class="form-control">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">到期日期</label>
+          <input type="date" id="renewalEditExpireDate" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">提前预警阈值</label>
+          <select id="renewalEditRemindDays" class="form-control">
+            <option value="7">提前 7 天紧急预警</option>
+            <option value="15">提前 15 天预警</option>
+            <option value="30" selected>提前 30 天常规预警</option>
+            <option value="60">提前 60 天长周期预警</option>
+            <option value="90">提前 90 天远期预警</option>
+          </select>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">预计续费成本 (元)</label>
@@ -855,12 +1008,15 @@ $theme = getConfig('theme', 'notion');
       </div>
       <div class="form-group">
         <label class="form-label">购买账号/密码备忘</label>
-        <input type="text" id="renewalEditNote" class="form-control" placeholder="如：账号 admin@corp.com">
+        <input type="text" id="renewalEditNote" class="form-control" placeholder="如：账号 admin@corp.com / 见密码本">
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
-      <button class="btn btn-primary" onclick="App.saveRenewalItem()">保存续费项</button>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+      <button type="button" id="renewalModalDeleteBtn" class="btn btn-danger" style="display:none" onclick="App.deleteRenewal(this)">删除此资产</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
+        <button class="btn btn-primary" onclick="App.saveRenewalItem()">保存续费项</button>
+      </div>
     </div>
   </div>
 </div>
@@ -970,6 +1126,60 @@ $theme = getConfig('theme', 'notion');
   </div>
 </div>
 
+<!-- 8.5. 新增/编辑快速通道弹窗 -->
+<div id="portalModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
+  <div class="modal-dialog" style="max-width:460px">
+    <div class="modal-header">
+      <span id="portalModalTitleText">新增快速业务通道</span>
+      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="portalModalId">
+      <div style="display:grid;grid-template-columns:84px 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">图标/Emoji</label>
+          <input type="text" id="portalModalIcon" class="form-control" style="text-align:center;font-size:18px" placeholder="⚡" maxlength="4">
+        </div>
+        <div class="form-group">
+          <label class="form-label">平台/通道名称 *</label>
+          <input type="text" id="portalModalTitle" class="form-control" placeholder="如：阿里巴巴国际站">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">跳转网址 (URL) *</label>
+        <input type="text" id="portalModalUrl" class="form-control" placeholder="https://seller.alibaba.com">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">业务分类</label>
+          <input type="text" id="portalModalCategory" list="portalCategoryDatalist" class="form-control" placeholder="如: 外贸拓客 / 采购供应链">
+          <datalist id="portalCategoryDatalist">
+            <option value="外贸拓客">
+            <option value="采购供应链">
+            <option value="协同通信">
+            <option value="实用工具">
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">排序权重</label>
+          <input type="number" id="portalModalSort" class="form-control" placeholder="0 (越小越靠前)">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">常用账号提示 / 备忘说明 (非密码)</label>
+        <input type="text" id="portalModalNote" class="form-control" placeholder="如：主店铺后台 / 邮箱 sales@corp.com">
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+      <button type="button" id="portalModalDeleteBtn" class="btn btn-danger" style="display:none" onclick="App.deletePortalFromModal()">删除通道</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
+        <button class="btn btn-primary" onclick="App.savePortalItem()">保存通道</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 9. 访问口令登录弹窗 -->
 <div id="loginModal" class="modal-overlay" style="display:none">
   <div class="modal-dialog" style="max-width:380px">
@@ -986,6 +1196,6 @@ $theme = getConfig('theme', 'notion');
   </div>
 </div>
 
-<script src="js/app.js?v=<?php echo time(); ?>"></script>
+<script src="js/app.js?v=<?php echo $jsVer; ?>"></script>
 </body>
 </html>
