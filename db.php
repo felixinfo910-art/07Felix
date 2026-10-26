@@ -3,7 +3,7 @@
 
 class Database {
     private static $pdo = null;
-    const SCHEMA_VERSION = 5; // 当前数据库结构版本号 (v5: 支持站点与通道的安全加密凭据与免密/速填跳板)
+    const SCHEMA_VERSION = 6; // 当前数据库结构版本号 (v6: 资产续费雷达支持完整编辑修改、快速延期与安全凭据管理)
 
     public static function getConnection() {
         if (self::$pdo === null) {
@@ -95,6 +95,10 @@ class Database {
         try { $db->exec("ALTER TABLE reimbursements ADD COLUMN project_id INTEGER DEFAULT 0"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE renewals ADD COLUMN company_id INTEGER DEFAULT 0"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE renewals ADD COLUMN project_id INTEGER DEFAULT 0"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE renewals ADD COLUMN login_account TEXT DEFAULT ''"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE renewals ADD COLUMN login_password_encrypted TEXT"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE renewals ADD COLUMN auto_login_type TEXT DEFAULT 'copy_and_jump'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE renewals ADD COLUMN post_target_url TEXT DEFAULT ''"); } catch (Throwable $e) {}
 
         // 网站项目跳转链接
         $db->exec("CREATE TABLE IF NOT EXISTS project_links (
@@ -128,6 +132,10 @@ class Database {
             cost REAL DEFAULT 0,            -- 预计/单次续费金额
             account_note TEXT,              -- 购买账号备忘
             remind_days INTEGER DEFAULT 30, -- 提前预警天数
+            login_account TEXT DEFAULT '',
+            login_password_encrypted TEXT,
+            auto_login_type TEXT DEFAULT 'copy_and_jump',
+            post_target_url TEXT DEFAULT '',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 

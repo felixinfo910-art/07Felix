@@ -372,9 +372,15 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
       <div class="section-header">
         <div>
           <div class="section-title">资产与到期续费雷达 (Renewal Radar)</div>
-          <div class="section-subtitle">域名、云服务器、SSL证书、SaaS订阅全生命周期监控；官网后台一键直达，续费后一键转个人垫资报销</div>
+          <div class="section-subtitle">域名、云服务器、SSL证书、SaaS订阅全生命周期监控；官网控制台一键直达，到期预警与资产台账统筹管理</div>
         </div>
         <button class="btn btn-primary" onclick="App.openAddRenewalModal()">新增资产</button>
+      </div>
+
+      <!-- 移动端专属纯净统计条 (替代臃肿的4色大盘栅格) -->
+      <div id="renewalsMobileSummary" class="renewals-mobile-summary" style="display:none">
+        <span>全部资产 (<span id="renewalsMobileTotalCount">0</span>)</span>
+        <span id="renewalsMobileUrgentNotice"></span>
       </div>
 
       <!-- 核心雷达指标看板 KPI Grid -->
@@ -416,8 +422,8 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
         </div>
       </div>
 
-      <!-- 顶部多维筛选与搜索工具条 -->
-      <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px">
+      <!-- 顶部多维筛选与搜索工具条 (移动端隐藏，免除筛选展示全部) -->
+      <div id="renewalFilterToolbar" style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px">
         <!-- 分类药丸按钮组 -->
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <div id="renewalCategoryFilter" style="display:flex;gap:6px;flex-wrap:wrap">
@@ -457,7 +463,7 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
         </div>
       </div>
 
-      <!-- 高密度资产表格 -->
+      <!-- 高密度资产表格 (桌面端) -->
       <div class="notion-table-container">
         <table class="notion-table">
           <thead>
@@ -469,13 +475,18 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
               <th style="width:11%">到期日期</th>
               <th style="width:12%">生命周期雷达</th>
               <th style="width:8%">续费预估</th>
-              <th style="min-width:190px;text-align:right">操作</th>
+              <th style="min-width:260px;text-align:right">操作</th>
             </tr>
           </thead>
           <tbody id="renewalsTableBody">
             <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">加载中...</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- 移动端专属高密度轻量卡片流 (手机端以查看速览为主，操作精简，安全防误触) -->
+      <div id="renewalsCardsMobile" class="renewals-cards-mobile">
+        <div style="text-align:center;padding:30px;color:var(--text-muted)">加载中...</div>
       </div>
     </section>
 
@@ -792,64 +803,7 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
   </div>
 </div>
 
-<!-- 2. 【核心神级联动】续费更新与一键转报销弹窗 -->
-<div id="renewModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
-  <div class="modal-dialog">
-    <div class="modal-header">
-      <span>续费更新与联动转报销</span>
-      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="renewModalId">
-      <div style="margin-bottom:12px">
-        <div style="font-size:12px;color:var(--text-muted)">当前资产名称</div>
-        <div id="renewModalName" style="font-weight:600;font-size:15px"></div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">原有到期日: <span id="renewModalOldExpire" style="font-weight:600"></span></label>
-        <label class="form-label">新的到期日期 (完成续期后的日期)</label>
-        <input type="date" id="renewModalNewDate" class="form-control">
-      </div>
-
-      <div style="margin:16px 0;padding:14px;background:var(--tag-orange-bg);border-radius:var(--radius-md);border:1px solid rgba(204,102,46,0.2)">
-        <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;color:var(--tag-orange-text);margin-bottom:10px">
-          <input type="checkbox" id="renewModalAutoReimb" checked style="width:16px;height:16px">
-          <span>☑️ 重点联动：同时生成个人垫资报销单 (免去重复记账)</span>
-        </label>
-        
-        <div class="form-group">
-          <label class="form-label">本次自掏腰包垫付金额 (元)</label>
-          <input type="number" step="0.01" id="renewModalAmount" class="form-control" placeholder="0.00">
-        </div>
-        <div class="form-group">
-          <label class="form-label">支付方式</label>
-          <select id="renewModalPayMethod" class="form-control">
-            <option value="微信支付">微信支付</option>
-            <option value="支付宝">支付宝</option>
-            <option value="个人信用卡">个人信用卡</option>
-            <option value="银行转账">银行转账</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">上传续费扣款凭证 / 发票 (支持手机直接拍照)</label>
-          <input type="file" accept="image/*" class="form-control" onchange="App.handleFileUpload(this, 'renewModalInvoiceUrl', 'renewInvoicePreview')">
-          <input type="hidden" id="renewModalInvoiceUrl">
-          <img id="renewInvoicePreview" style="display:none;width:100px;height:70px;object-fit:cover;margin-top:6px;border-radius:4px" alt="凭证预览">
-        </div>
-        <div class="form-group">
-          <label class="form-label">补充备忘说明</label>
-          <input type="text" id="renewModalRemark" class="form-control" placeholder="如：已开电子发票，待月底汇总提交">
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
-      <button class="btn btn-primary" onclick="App.submitRenewAndReimburse()">确认续期报销</button>
-    </div>
-  </div>
-</div>
-
-<!-- 3. 新增/编辑项目弹窗 -->
+<!-- 2. 新增/编辑项目弹窗 -->
 <div id="projectModal" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
   <div class="modal-dialog">
     <div class="modal-header">
@@ -1063,7 +1017,7 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
     <div class="modal-body">
       <input type="hidden" id="renewalEditId">
       <div class="form-group">
-        <label class="form-label">资产名称</label>
+        <label class="form-label">资产名称 <span style="color:var(--danger-color)">*</span></label>
         <input type="text" id="renewalEditName" class="form-control" placeholder="如：主域名 (example.com) 或 核心生产服务器">
       </div>
       <div class="form-group">
@@ -1079,7 +1033,7 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">分类</label>
+        <label class="form-label">资产分类</label>
         <select id="renewalEditCategory" class="form-control">
           <option value="domain">🌐 域名 (Domain)</option>
           <option value="server">🖥️ 云服务器 (ECS/CVM)</option>
@@ -1089,13 +1043,21 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">注册/托管服务商</label>
-        <input type="text" id="renewalEditProvider" class="form-control" placeholder="如：阿里云、腾讯云、Godaddy、Notion、AWS">
+        <label class="form-label">注册 / 托管服务商</label>
+        <input type="text" id="renewalEditProvider" class="form-control" placeholder="如：阿里云、腾讯云、Godaddy、Notion、AWS、Cloudflare">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
-          <label class="form-label">到期日期</label>
+          <label class="form-label">到期日期 <span style="color:var(--danger-color)">*</span></label>
           <input type="date" id="renewalEditExpireDate" class="form-control">
+          <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text-muted);display:flex;align-items:center">快捷延期:</span>
+            <button type="button" class="btn btn-sm btn-secondary" style="font-size:11px;padding:1px 6px" onclick="App.adjustRenewalExpireDate(1, 'year')">+1年</button>
+            <button type="button" class="btn btn-sm btn-secondary" style="font-size:11px;padding:1px 6px" onclick="App.adjustRenewalExpireDate(6, 'month')">+6个月</button>
+            <button type="button" class="btn btn-sm btn-secondary" style="font-size:11px;padding:1px 6px" onclick="App.adjustRenewalExpireDate(3, 'month')">+3个月</button>
+            <button type="button" class="btn btn-sm btn-secondary" style="font-size:11px;padding:1px 6px" onclick="App.adjustRenewalExpireDate(1, 'month')">+1个月</button>
+            <button type="button" class="btn btn-sm btn-secondary" style="font-size:11px;padding:1px 6px" onclick="App.adjustRenewalExpireDate(1, 'year', true)">今日起+1年</button>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">提前预警阈值</label>
@@ -1116,8 +1078,53 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
         <label class="form-label">官方续费后台直达链接 (点击可直接跳转缴费)</label>
         <input type="url" id="renewalEditUrl" class="form-control" placeholder="https://...">
       </div>
-      <div class="form-group">
-        <label class="form-label">购买账号/密码备忘</label>
+
+      <!-- 登录凭据与账号密码安全管理 (AES-256 加密) -->
+      <div style="margin:14px 0 10px 0;border:1px solid var(--border-light);border-radius:var(--radius-sm);background:var(--bg-card);overflow:hidden">
+        <div style="padding:10px 12px;background:var(--bg-subtle);display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="document.getElementById('renewalCredentialSec').style.display = document.getElementById('renewalCredentialSec').style.display === 'none' ? 'block' : 'none'">
+          <div style="font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px">
+            <span>🔑</span><span>控制台登录安全凭据 (可选，AES-256 加密存储)</span>
+          </div>
+          <span style="font-size:11px;color:var(--text-muted)">展开 / 折叠 ▾</span>
+        </div>
+        <div id="renewalCredentialSec" style="padding:12px;display:none">
+          <div class="form-group">
+            <label class="form-label" style="display:flex;justify-content:space-between">
+              <span>登录账号 / 手机 / 邮箱</span>
+              <span id="renewalCurrentPassStatus" style="font-size:11px"></span>
+            </label>
+            <input type="text" id="renewalLoginAccount" class="form-control" placeholder="如：admin@company.com 或 13800138000">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display:flex;justify-content:space-between">
+              <span>登录密码 (AES-256 加密存管)</span>
+              <div style="display:flex;gap:8px">
+                <a href="javascript:void(0)" onclick="App.generateRandomPassword('renewalLoginPassword')" style="font-size:11.5px;color:var(--accent-color)">🎲 随机生成强密码</a>
+                <a href="javascript:void(0)" onclick="App.togglePasswordVisibility('renewalLoginPassword')" style="font-size:11.5px;color:var(--text-secondary)">👁️ 显示/隐藏</a>
+              </div>
+            </label>
+            <input type="password" id="renewalLoginPassword" class="form-control" placeholder="留空则保持原密码不变；如需修改输入新密码">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);margin-top:6px;cursor:pointer">
+              <input type="checkbox" id="renewalClearPassword"> 清除已保存的密码
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="form-label">直达自动化模式</label>
+            <select id="renewalAutoLoginType" class="form-control" onchange="document.getElementById('renewalPostTargetGroup').style.display = this.value === 'post_submit' ? 'block' : 'none'">
+              <option value="copy_and_jump">🚀 安全浮窗倒计时与一键快填 (推荐: 打开官网+浮窗倒计时)</option>
+              <option value="post_submit">⚡ 表单模拟自动提交 (内部系统/需目标支持)</option>
+              <option value="none">仅记录，普通跳转</option>
+            </select>
+          </div>
+          <div class="form-group" id="renewalPostTargetGroup" style="display:none">
+            <label class="form-label">自定义 POST 目标 Action URL</label>
+            <input type="url" id="renewalPostTargetUrl" class="form-control" placeholder="https://...">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">备忘 / 账号说明</label>
         <input type="text" id="renewalEditNote" class="form-control" placeholder="如：账号 admin@corp.com / 见密码本">
       </div>
     </div>
@@ -1125,7 +1132,7 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
       <button type="button" id="renewalModalDeleteBtn" class="btn btn-danger" style="display:none" onclick="App.deleteRenewal(this)">删除此资产</button>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="btn btn-secondary" onclick="App.closeAllModals()">取消</button>
-        <button class="btn btn-primary" onclick="App.saveRenewalItem()">保存续费项</button>
+        <button class="btn btn-primary" onclick="App.saveRenewalItem()">保存资产修改</button>
       </div>
     </div>
   </div>
@@ -1429,7 +1436,85 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
         <button class="btn btn-primary" onclick="App.saveUserItem()">保存账号</button>
       </div>
     </div>
-  <!-- 11. 🚀 安全登录助手浮动胶囊 (用于直达外部/自有系统时安全速填与凭据复制) -->
+  </div>
+</div>
+
+<!-- 11. 移动端专属：资产轻量速览与快捷延期抽屉 (Detail Sheet) -->
+<div id="renewalDetailSheet" class="modal-overlay" style="display:none" onclick="if(event.target===this) App.closeAllModals()">
+  <div class="modal-dialog renewal-sheet-dialog">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span id="sheetCatIcon" style="font-size:16px">🌐</span>
+        <span id="sheetTitleText" style="font-weight:600;font-size:14.5px">资产详情速览</span>
+      </div>
+      <button class="btn btn-sm btn-secondary" onclick="App.closeAllModals()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:14px 16px">
+      <!-- 倒计时横幅 -->
+      <div id="sheetStatusBanner" style="padding:10px 12px;border-radius:var(--radius-sm);display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;background:var(--bg-subtle)">
+        <div style="display:flex;flex-direction:column">
+          <span style="font-size:11px;color:var(--text-muted)">当前生命周期</span>
+          <span id="sheetStatusText" style="font-weight:600;font-size:13.5px"></span>
+        </div>
+        <div style="text-align:right">
+          <span style="font-size:11px;color:var(--text-muted)">到期日期</span>
+          <div id="sheetExpireDate" style="font-weight:600;font-size:13px;font-family:monospace"></div>
+        </div>
+      </div>
+
+      <!-- 核心指标两列排布 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="sheet-info-cell">
+          <span class="sheet-info-label">归属主体</span>
+          <span id="sheetCompany" class="sheet-info-val">-</span>
+        </div>
+        <div class="sheet-info-cell">
+          <span class="sheet-info-label">关联项目</span>
+          <span id="sheetProject" class="sheet-info-val">-</span>
+        </div>
+        <div class="sheet-info-cell">
+          <span class="sheet-info-label">托管服务商</span>
+          <span id="sheetProvider" class="sheet-info-val">-</span>
+        </div>
+        <div class="sheet-info-cell">
+          <span class="sheet-info-label">续费成本预估</span>
+          <span id="sheetCost" class="sheet-info-val" style="color:var(--accent-color);font-weight:600">￥0.00</span>
+        </div>
+      </div>
+
+      <!-- 账号与安全密保卡片 -->
+      <div id="sheetCredentialSec" style="background:var(--bg-subtle);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px">
+        <div style="font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:4px;margin-bottom:4px">
+          <span>🔑</span><span>登录账号 / 备忘说明</span>
+        </div>
+        <div id="sheetAccountVal" style="font-size:12.5px;font-weight:500;word-break:break-all">暂无备忘</div>
+      </div>
+
+      <!-- 一键快捷延期 (已在官网续期，手机上轻触快速同步更新) -->
+      <div style="margin-bottom:6px;border:1px dashed var(--border-medium);border-radius:var(--radius-sm);padding:10px 12px">
+        <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:6px">⚡ 快捷延期更新 (厂商已扣款续期，轻触快速同步):</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="App.quickExtendCurrentRenewal(1, 'year')">+1年</button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="App.quickExtendCurrentRenewal(6, 'month')">+6个月</button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="App.quickExtendCurrentRenewal(3, 'month')">+3个月</button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="App.quickExtendCurrentRenewal(1, 'year', true)">今日起+1年</button>
+        </div>
+      </div>
+
+      <input type="hidden" id="sheetRenewalId">
+    </div>
+
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center">
+      <button type="button" class="btn btn-secondary" onclick="App.editFromSheet()">
+        ✏️ 完整编辑
+      </button>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn btn-secondary" onclick="App.closeAllModals()">关闭</button>
+        <span id="sheetLaunchBtnWrap"></span>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="securityLoginDock" class="security-login-dock" style="display:none">
   <div class="dock-header">
     <div class="dock-title-wrap">

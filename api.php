@@ -334,7 +334,7 @@ switch ($action) {
         jsonResponse(true, ['id' => $id], '直达入口已成功删除');
         break;
 
-    // ---------------- 续费雷达与一键转报销 ----------------
+    // ---------------- 资产与到期续费雷达 ----------------
     case 'get_renewals':
         $today = date('Y-m-d');
         $sql = "SELECT r.*, 
@@ -360,6 +360,8 @@ switch ($action) {
             } else {
                 $r['status_level'] = 'normal';  // 充裕安全
             }
+            $r['has_password'] = !empty($r['login_password_encrypted']);
+            unset($r['login_password_encrypted']);
         }
         jsonResponse(true, $renewals);
         break;
@@ -380,62 +382,47 @@ switch ($action) {
         $accountNote = trim($inputData['account_note'] ?? '');
         $remindDays = (int)($inputData['remind_days'] ?? 30);
 
+        $loginAccount = trim($inputData['login_account'] ?? '');
+        $loginPassword = isset($inputData['login_password']) ? (string)$inputData['login_password'] : null;
+        $clearPassword = !empty($inputData['clear_password']);
+        $autoLoginType = $inputData['auto_login_type'] ?? 'copy_and_jump';
+        $postTargetUrl = trim($inputData['post_target_url'] ?? '');
+        if (!empty($postTargetUrl) && !preg_match('#^(https?:)?//#i', $postTargetUrl)) {
+            $postTargetUrl = 'https://' . $postTargetUrl;
+        }
+
         if (empty($name) || empty($expireDate)) {
-            jsonResponse(false, null, '名称和到期日不能为空');
+            jsonResponse(false, null, '资产名称和到期日均为必填项');
         }
 
         if ($id > 0) {
-            $stmt = $db->prepare("UPDATE renewals SET company_id = ?, project_id = ?, name = ?, category = ?, provider = ?, expire_date = ?, renew_url = ?, cost = ?, account_note = ?, remind_days = ? WHERE id = ?");
-            $stmt->execute([$companyId, $projectId, $name, $category, $provider, $expireDate, $renewUrl, $cost, $accountNote, $remindDays, $id]);
+            $existing = $db->query("SELECT login_password_encrypted FROM renewals WHERE id = {$id}")->fetch();
+            $encryptedPass = $existing ? ($existing['login_password_encrypted'] ?? null) : null;
+
+            if ($clearPassword) {
+                $encryptedPass = null;
+            } elseif ($loginPassword !== null && $loginPassword !== '') {
+                $encryptedPass = encryptSecret($loginPassword);
+            }
+
+            $stmt = $db->prepare("UPDATE renewals SET company_id = ?, project_id = ?, name = ?, category = ?, provider = ?, expire_date = ?, renew_url = ?, cost = ?, account_note = ?, remind_days = ?, login_account = ?, login_password_encrypted = ?, auto_login_type = ?, post_target_url = ? WHERE id = ?");
+            $stmt->execute([$companyId, $projectId, $name, $category, $provider, $expireDate, $renewUrl, $cost, $accountNote, $remindDays, $loginAccount, $encryptedPass, $autoLoginType, $postTargetUrl, $id]);
         } else {
-            $stmt = $db->prepare("INSERT INTO renewals (company_id, project_id, name, category, provider, expire_date, renew_url, cost, account_note, remind_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$companyId, $projectId, $name, $category, $provider, $expireDate, $renewUrl, $cost, $accountNote, $remindDays]);
+            $encryptedPass = (!empty($loginPassword) && !$clearPassword) ? encryptSecret($loginPassword) : null;
+            $stmt = $db->prepare("INSERT INTO renewals (company_id, project_id, name, category, provider, expire_date, renew_url, cost, account_note, remind_days, login_account, login_password_encrypted, auto_login_type, post_target_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$companyId, $projectId, $name, $category, $provider, $expireDate, $renewUrl, $cost, $accountNote, $remindDays, $loginAccount, $encryptedPass, $autoLoginType, $postTargetUrl]);
             $id = $db->lastInsertId();
         }
-        jsonResponse(true, ['id' => $id], '续费项已保存');
+        jsonResponse(true, ['id' => $id], '资产续费项已保存');
         break;
 
     case 'delete_renewal':
-        $id = (int)($inputData['id'] ?? 0);
+        $id = (int)($inputData['id'] ?? ($_GET['id'] ?? 0));
+        if ($id <= 0) {
+            jsonResponse(false, null, '缺少有效资产ID');
+        }
         $db->prepare("DELETE FROM renewals WHERE id = ?")->execute([$id]);
         jsonResponse(true, null, '已删除续费项');
-        break;
-
-    // 【神级联动】续费后更新到期日，并一键转个人垫付报销
-    case 'renew_and_reimburse':
-        $renewalId = (int)($inputData['renewal_id'] ?? 0);
-        $newExpireDate = trim($inputData['new_expire_date'] ?? '');
-        $doReimburse = !empty($inputData['do_reimburse']);
-        $amount = (float)($inputData['amount'] ?? 0);
-        $payMethod = trim($inputData['pay_method'] ?? '微信支付');
-        $remark = trim($inputData['remark'] ?? '');
-        $invoiceImg = trim($inputData['invoice_img'] ?? '');
-
-        if ($renewalId <= 0 || empty($newExpireDate)) {
-            jsonResponse(false, null, '缺少续费项ID或新到期日期');
-        }
-
-        // 更新续费项到期日
-        $stmt = $db->prepare("UPDATE renewals SET expire_date = ? WHERE id = ?");
-        $stmt->execute([$newExpireDate, $renewalId]);
-
-        // 获取该续费项信息
-        $rStmt = $db->prepare("SELECT * FROM renewals WHERE id = ?");
-        $rStmt->execute([$renewalId]);
-        $renewalItem = $rStmt->fetch();
-
-        // 如果勾选了一键转报销
-        if ($doReimburse && $amount > 0) {
-            $reimbTitle = "续费垫付: " . ($renewalItem ? $renewalItem['name'] : '资产续费');
-            $fullRemark = "续期至: {$newExpireDate}。" . ($remark ? " 备注: {$remark}" : '');
-            $companyId = $renewalItem ? (int)($renewalItem['company_id'] ?? 0) : 0;
-            $projectId = $renewalItem ? (int)($renewalItem['project_id'] ?? 0) : 0;
-            $insReimb = $db->prepare("INSERT INTO reimbursements (title, amount, pay_date, pay_method, status, invoice_img, remark, renewal_id, company_id, project_id) VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)");
-            $insReimb->execute([$reimbTitle, $amount, date('Y-m-d'), $payMethod, $invoiceImg, $fullRemark, $renewalId, $companyId, $projectId]);
-            jsonResponse(true, null, '续期成功，已同步生成一笔待提报的垫资报销单！');
-        }
-
-        jsonResponse(true, null, '续期时间已更新');
         break;
 
     // ---------------- 垫资与报销管家 ----------------
@@ -634,14 +621,16 @@ switch ($action) {
 
     // ---------------- 凭据安全解密与跳板就绪接口 ----------------
     case 'get_credential':
-        $type = $inputData['type'] ?? ''; // 'portal' 或 'link'
+        $type = $inputData['type'] ?? ''; // 'portal', 'link', 或 'renewal'
         $id = (int)($inputData['id'] ?? 0);
-        if ($id <= 0 || !in_array($type, ['portal', 'link'])) {
+        if ($id <= 0 || !in_array($type, ['portal', 'link', 'renewal'])) {
             jsonResponse(false, null, '无效的凭据请求参数');
         }
 
         if ($type === 'portal') {
             $stmt = $db->prepare("SELECT id, title, url, login_account, login_password_encrypted, auto_login_type, post_target_url FROM quick_portals WHERE id = ?");
+        } elseif ($type === 'renewal') {
+            $stmt = $db->prepare("SELECT id, name AS title, renew_url AS url, login_account, login_password_encrypted, auto_login_type, post_target_url FROM renewals WHERE id = ?");
         } else {
             $stmt = $db->prepare("SELECT id, title, url, login_account, login_password_encrypted, auto_login_type, post_target_url FROM project_links WHERE id = ?");
         }

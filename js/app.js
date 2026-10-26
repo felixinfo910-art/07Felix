@@ -245,12 +245,13 @@ const App = {
           urgentListEl.innerHTML = data.urgent_renewals.map(r => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-light)">
               <div>
-                <span style="font-weight:600">${r.name}</span>
+                <span class="renewal-title-link" onclick="App.openEditRenewalModal('${r.id}')" style="font-weight:600;cursor:pointer" title="点击编辑此资产">${r.name}</span>
                 <span style="font-size:12px;color:var(--text-muted);margin-left:8px">${r.provider || ''}</span>
               </div>
-              <div style="display:flex;align-items:center;gap:8px">
+              <div style="display:flex;align-items:center;gap:6px">
                 <span class="badge-status danger">剩 ${r.days_left} 天到期</span>
-                <button class="btn btn-sm btn-secondary" onclick="App.openRenewModal(${r.id})">续费/转报销</button>
+                ${r.renew_url ? `<a href="${this.formatUrl(r.renew_url)}" target="_blank" class="btn btn-sm btn-secondary" title="官网控制台直达">直达 ↗</a>` : ''}
+                <button class="btn btn-sm btn-primary" onclick="App.openEditRenewalModal('${r.id}')" title="编辑维护此资产">✏️ 编辑</button>
               </div>
             </div>
           `).join('');
@@ -746,13 +747,13 @@ const App = {
     listEl.innerHTML = matched.map(r => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-light)">
         <div>
-          <span style="font-weight:600">${r.name}</span>
+          <span class="renewal-title-link" onclick="App.openEditRenewalModal('${r.id}')" style="font-weight:600;cursor:pointer" title="点击编辑此资产">${r.name}</span>
           <span style="font-size:12px;color:var(--text-muted);margin-left:8px">${r.provider || ''} · 到期日: ${r.expire_date}</span>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:6px">
           <span class="badge-status ${r.status_level === 'danger' ? 'danger' : (r.status_level === 'warning' ? 'warning' : 'normal')}">剩 ${r.days_left} 天</span>
           ${r.renew_url ? `<a href="${this.formatUrl(r.renew_url)}" target="_blank" class="btn btn-sm btn-secondary">去官网续费 ↗</a>` : ''}
-          <button class="btn btn-sm btn-primary" onclick="App.openRenewModal(${r.id})">更新/转报销</button>
+          <button class="btn btn-sm btn-primary" onclick="App.openEditRenewalModal('${r.id}')" title="编辑修改此资产">✏️ 编辑</button>
         </div>
       </div>
     `).join('');
@@ -769,7 +770,7 @@ const App = {
     }
   },
 
-  // ---------------- 3. 到期续费预警与一键转报销 ----------------
+  // ---------------- 3. 资产与到期续费雷达 ----------------
   async loadRenewals() {
     try {
       const [resRen, resComp, resProj] = await Promise.all([
@@ -843,7 +844,21 @@ const App = {
     const costEl = document.getElementById('radarTotalCost');
     if (costEl) costEl.innerText = '￥' + totalCost.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    // 2. 统计各分类按钮数量
+    // 移动端专属纯净统计条更新 (共 X 项资产 · Y 项紧急临期)
+    const mobileTotalEl = document.getElementById('renewalsMobileTotalCount');
+    if (mobileTotalEl) mobileTotalEl.innerText = totalCount;
+    const mobileUrgentEl = document.getElementById('renewalsMobileUrgentNotice');
+    if (mobileUrgentEl) {
+      if (urgentCount > 0) {
+        mobileUrgentEl.innerHTML = `<span style="color:var(--danger-color);font-weight:600">🚨 ${urgentCount} 项紧急临期</span>`;
+      } else if (warningCount > 0) {
+        mobileUrgentEl.innerHTML = `<span style="color:var(--tag-orange-text)">⚠️ ${warningCount} 项预警</span>`;
+      } else {
+        mobileUrgentEl.innerHTML = `<span style="color:var(--success-color)">🟢 全部充裕正常</span>`;
+      }
+    }
+
+    // 2. 统计各分类按钮数量 (桌面端)
     const catCounts = { all: allRenewals.length, domain: 0, server: 0, ssl: 0, saas: 0, other: 0 };
     allRenewals.forEach(r => {
       const c = r.category || 'other';
@@ -861,7 +876,73 @@ const App = {
     setCatText('radarCatCountSaas', catCounts.saas);
     setCatText('radarCatCountOther', catCounts.other);
 
-    // 3. 多维筛选过滤 (分类 + 紧急度 + 公司 + 搜索)
+    // 3. 移动端专属极简卡片流渲染 (手机端不用筛选，全量平铺展示；按紧迫度智能置顶，极简纯净两行排布)
+    const mobileContainer = document.getElementById('renewalsCardsMobile');
+    if (mobileContainer) {
+      if (allRenewals.length === 0) {
+        mobileContainer.innerHTML = `<div style="text-align:center;padding:36px;color:var(--text-muted);font-size:13px">暂无纳管资产，点击右上角【+ 新增资产】开始录入。</div>`;
+      } else {
+        // 手机端展示全部资产，无需筛选；按紧迫度智能置顶 (紧急/过期 -> 预警 -> 充裕正常)
+        const mobileList = [...allRenewals].sort((a, b) => {
+          const aLevel = (a.days_left <= 7 || a.status_level === 'danger' || a.days_left < 0) ? 1 : ((a.days_left <= 30 || a.status_level === 'warning') ? 2 : 3);
+          const bLevel = (b.days_left <= 7 || b.status_level === 'danger' || b.days_left < 0) ? 1 : ((b.days_left <= 30 || b.status_level === 'warning') ? 2 : 3);
+          if (aLevel !== bLevel) return aLevel - bLevel;
+          return (a.days_left ?? 9999) - (b.days_left ?? 9999);
+        });
+
+        mobileContainer.innerHTML = mobileList.map(r => {
+          let statusText = '';
+          let statusColor = 'var(--text-muted)';
+          let isUrgent = false;
+
+          if (r.days_left < 0 || r.status_level === 'expired') {
+            statusText = `已过期 ${Math.abs(r.days_left)}天`;
+            statusColor = 'var(--danger-color)';
+            isUrgent = true;
+          } else if (r.days_left <= 7 || r.status_level === 'danger') {
+            statusText = `🚨 剩 ${r.days_left} 天`;
+            statusColor = 'var(--danger-color)';
+            isUrgent = true;
+          } else if (r.days_left <= 30 || r.status_level === 'warning') {
+            statusText = `⚠️ 剩 ${r.days_left} 天`;
+            statusColor = 'var(--tag-orange-text)';
+          } else {
+            statusText = `${r.days_left}天后到期`;
+            statusColor = 'var(--text-muted)';
+          }
+
+          // 服务商与主体，中圆点优雅连接，纯文本极简展示
+          const metaParts = [];
+          if (r.provider) metaParts.push(r.provider);
+          if (r.company_short_name) metaParts.push(r.company_short_name);
+          else if (r.company_name) metaParts.push(r.company_name);
+          const metaStr = metaParts.length > 0 ? metaParts.join(' · ') : '通用资产';
+
+          // 金额与到期日
+          const costVal = parseFloat(r.cost || 0);
+          const costStr = costVal > 0 ? ` · ￥${costVal.toFixed(2)}` : '';
+          const dateStr = `${r.expire_date || '-'}${costStr}`;
+
+          return `
+            <div class="renewal-mobile-card-simple ${isUrgent ? 'urgent' : ''}" onclick="App.openRenewalDetailSheet('${r.id}')" title="轻触查看详情与快捷延期">
+              <div class="renewal-card-row-top">
+                <div class="renewal-card-name-wrap">
+                  <span class="renewal-card-name">${r.name}</span>
+                  ${r.has_password ? '<span class="renewal-card-key" title="已设安全凭据">🔑</span>' : ''}
+                </div>
+                <div class="renewal-card-status" style="color:${statusColor}">${statusText}</div>
+              </div>
+              <div class="renewal-card-row-bottom">
+                <div class="renewal-card-meta">${metaStr}</div>
+                <div class="renewal-card-date">${dateStr}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // 4. 桌面端多维筛选过滤 (分类 + 紧急度 + 公司 + 搜索)
     let filtered = allRenewals;
     if (this.state.selectedRenewalCategory && this.state.selectedRenewalCategory !== 'all') {
       filtered = filtered.filter(r => (r.category || 'other') === this.state.selectedRenewalCategory);
@@ -893,7 +974,7 @@ const App = {
     }
 
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:36px;color:var(--text-muted)">未找到符合条件的资产记录，可尝试切换筛选条件或点击【+ 新增续费资产】。</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:36px;color:var(--text-muted)">未找到符合条件的资产记录，可尝试切换筛选条件或点击【+ 新增续费资产】。</td></tr>`;
       return;
     }
 
@@ -906,68 +987,79 @@ const App = {
       other: { label: '其他到期', icon: '📦', badge: 'normal' }
     };
 
-    tbody.innerHTML = filtered.map(r => {
-      let badgeClass = 'normal';
-      let statusText = `🟢 剩 ${r.days_left} 天`;
-      if (r.days_left < 0 || r.status_level === 'expired') {
-        badgeClass = 'danger';
-        statusText = `⚫ 已过期 (${Math.abs(r.days_left)}天前)`;
-      } else if (r.days_left <= 7 || r.status_level === 'danger') {
-        badgeClass = 'danger';
-        statusText = `🚨 仅剩 ${r.days_left} 天 (急迫)`;
-      } else if (r.days_left <= 30 || r.status_level === 'warning') {
-        badgeClass = 'warning';
-        statusText = `⚠️ 剩 ${r.days_left} 天 (临期)`;
-      }
+    // 桌面端表格渲染 (8列完整信息)
+    if (tbody) {
+      tbody.innerHTML = filtered.map(r => {
+        let badgeClass = 'normal';
+        let statusText = `🟢 剩 ${r.days_left} 天`;
+        if (r.days_left < 0 || r.status_level === 'expired') {
+          badgeClass = 'danger';
+          statusText = `⚫ 已过期 (${Math.abs(r.days_left)}天前)`;
+        } else if (r.days_left <= 7 || r.status_level === 'danger') {
+          badgeClass = 'danger';
+          statusText = `🚨 仅剩 ${r.days_left} 天 (急迫)`;
+        } else if (r.days_left <= 30 || r.status_level === 'warning') {
+          badgeClass = 'warning';
+          statusText = `⚠️ 剩 ${r.days_left} 天 (临期)`;
+        }
 
-      const catMeta = categoryMap[r.category] || categoryMap.other;
+        const catMeta = categoryMap[r.category] || categoryMap.other;
 
-      // 归属主体与关联项目
-      let compHtml = '';
-      if (r.company_short_name) {
-        compHtml = `<span class="badge-company color-${r.company_color || 'blue'}" title="${r.company_name}">🏢 ${r.company_short_name}</span>`;
-      }
-      let projHtml = '';
-      if (r.project_name) {
-        projHtml = `<span class="badge-status normal" style="font-size:11px;padding:2px 6px" title="关联网站: ${r.project_name}">🌐 ${r.project_name}</span>`;
-      }
-      const ownerHtml = (compHtml || projHtml) 
-        ? `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">${compHtml}${projHtml}</div>`
-        : `<span style="font-size:11.5px;color:var(--text-muted)">通用/未绑定</span>`;
+        // 归属主体与关联项目
+        let compHtml = '';
+        if (r.company_short_name) {
+          compHtml = `<span class="badge-company color-${r.company_color || 'blue'}" title="${r.company_name}">🏢 ${r.company_short_name}</span>`;
+        }
+        let projHtml = '';
+        if (r.project_name) {
+          projHtml = `<span class="badge-status normal" style="font-size:11px;padding:2px 6px" title="关联网站: ${r.project_name}">🌐 ${r.project_name}</span>`;
+        }
+        const ownerHtml = (compHtml || projHtml) 
+          ? `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">${compHtml}${projHtml}</div>`
+          : `<span style="font-size:11.5px;color:var(--text-muted)">通用/未绑定</span>`;
 
-      return `
-        <tr id="renewalRow_${r.id}">
-          <td>
-            <div style="font-weight:600;font-size:13.5px;color:var(--text-main)">${r.name}</div>
-            ${r.account_note ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:3px"><span>🔑</span><span>${r.account_note}</span></div>` : ''}
-          </td>
-          <td>${ownerHtml}</td>
-          <td>
-            <span class="badge-status normal" style="font-size:11.5px">${catMeta.icon} ${catMeta.label}</span>
-          </td>
-          <td>
-            <span style="font-size:12.5px;font-weight:500;color:var(--text-main)">${r.provider || '-'}</span>
-          </td>
-          <td>
-            <div style="font-size:12.5px;font-family:monospace">${r.expire_date}</div>
-          </td>
-          <td>
-            <span class="badge-status ${badgeClass}" style="font-weight:600">${statusText}</span>
-          </td>
-          <td>
-            <strong style="font-size:13px;color:var(--text-main)">￥${parseFloat(r.cost || 0).toFixed(2)}</strong>
-          </td>
-          <td style="text-align:right">
-            <div style="display:inline-flex;gap:4px;align-items:center">
-              ${r.renew_url ? `<a href="${this.formatUrl(r.renew_url)}" target="_blank" class="btn btn-sm btn-secondary" title="官网控制台直达缴费">直达 ↗</a>` : ''}
-              <button class="btn btn-sm btn-primary" onclick="App.openRenewModal(${r.id})" title="续费并一键生成个人垫资报销单">续期/转报销</button>
-              <button class="btn btn-sm btn-secondary" onclick="App.openEditRenewalModal(${r.id})" title="修改资产信息">✎</button>
-              <button type="button" class="btn btn-sm btn-danger renewal-del-btn" onclick="App.quickDeleteRenewal(${r.id}, this)" title="双击确认快速删除">🗑️</button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+        return `
+          <tr id="renewalRow_${r.id}">
+            <td>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="renewal-title-link" onclick="App.openEditRenewalModal('${r.id}')" title="点击编辑修改此资产" style="font-weight:600;font-size:13.5px;color:var(--text-main);cursor:pointer">
+                  ${r.name} <span class="edit-hint-icon" style="font-size:11px">✏️</span>
+                </span>
+                ${r.has_password ? `<span class="credential-key-badge" title="已配置加密安全凭据">🔑</span>` : ''}
+              </div>
+              ${r.account_note ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:3px"><span>📝</span><span>${r.account_note}</span></div>` : ''}
+            </td>
+            <td>${ownerHtml}</td>
+            <td>
+              <span class="badge-status normal" style="font-size:11.5px">${catMeta.icon} ${catMeta.label}</span>
+            </td>
+            <td>
+              <span style="font-size:12.5px;font-weight:500;color:var(--text-main)">${r.provider || '-'}</span>
+            </td>
+            <td>
+              <div style="font-size:12.5px;font-family:monospace">${r.expire_date}</div>
+            </td>
+            <td>
+              <span class="badge-status ${badgeClass}" style="font-weight:600">${statusText}</span>
+            </td>
+            <td>
+              <strong style="font-size:13px;color:var(--text-main)">￥${parseFloat(r.cost || 0).toFixed(2)}</strong>
+            </td>
+            <td style="text-align:right">
+              <div style="display:inline-flex;gap:4px;align-items:center">
+                ${r.renew_url ? (
+                  r.has_password 
+                    ? `<button class="btn btn-sm btn-secondary" onclick="App.launchTarget('renewal', '${r.id}', '${this.formatUrl(r.renew_url)}')" title="控制台直达并调起安全快填浮窗">直达 ↗</button>`
+                    : `<a href="${this.formatUrl(r.renew_url)}" target="_blank" class="btn btn-sm btn-secondary" title="官网控制台直达缴费">直达 ↗</a>`
+                ) : ''}
+                <button class="btn btn-sm btn-primary" onclick="App.openEditRenewalModal('${r.id}')" title="编辑修改此资产"><span style="margin-right:2px">✏️</span>编辑修改</button>
+                <button type="button" class="btn btn-sm btn-danger renewal-del-btn" onclick="App.quickDeleteRenewal('${r.id}', this)" title="双击确认快速删除">🗑️</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
   },
 
   // ---------------- 4. 垫资与报销管家 ----------------
@@ -1685,60 +1777,6 @@ const App = {
     document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
   },
 
-  // 打开【续费并一键转垫资报销】弹窗（核心联动功能）
-  openRenewModal(renewalId) {
-    const r = this.state.renewals.find(x => x.id === renewalId);
-    if (!r) return;
-
-    document.getElementById('renewModalId').value = r.id;
-    document.getElementById('renewModalName').innerText = r.name;
-    document.getElementById('renewModalOldExpire').innerText = r.expire_date;
-    
-    // 默认新到期日加 1 年
-    const d = new Date(r.expire_date);
-    d.setFullYear(d.getFullYear() + 1);
-    document.getElementById('renewModalNewDate').value = d.toISOString().split('T')[0];
-    document.getElementById('renewModalAmount').value = r.cost || '';
-    document.getElementById('renewModalAutoReimb').checked = true;
-    document.getElementById('renewModalInvoiceUrl').value = '';
-    document.getElementById('renewInvoicePreview').style.display = 'none';
-
-    document.getElementById('renewModal').style.display = 'flex';
-  },
-
-  async submitRenewAndReimburse() {
-    const renewalId = document.getElementById('renewModalId').value;
-    const newExpireDate = document.getElementById('renewModalNewDate').value;
-    const doReimburse = document.getElementById('renewModalAutoReimb').checked;
-    const amount = document.getElementById('renewModalAmount').value;
-    const payMethod = document.getElementById('renewModalPayMethod').value;
-    const invoiceImg = document.getElementById('renewModalInvoiceUrl').value;
-    const remark = document.getElementById('renewModalRemark').value;
-
-    const res = await fetch('api.php?action=renew_and_reimburse', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        renewal_id: renewalId,
-        new_expire_date: newExpireDate,
-        do_reimburse: doReimburse,
-        amount: amount,
-        pay_method: payMethod,
-        invoice_img: invoiceImg,
-        remark: remark
-      })
-    }).then(r => r.json());
-
-    if (res.success) {
-      alert(res.message);
-      this.closeAllModals();
-      this.loadRenewals();
-      if (this.state.currentTab === 'dashboard') this.loadDashboard();
-    } else {
-      alert(res.message);
-    }
-  },
-
   // 上传发票凭证处理
   async handleFileUpload(fileInput, targetUrlInputId, previewImgId) {
     if (!fileInput.files || fileInput.files.length === 0) return;
@@ -2185,7 +2223,12 @@ const App = {
     document.getElementById('renewalEditName').value = '';
     document.getElementById('renewalEditCategory').value = 'domain';
     document.getElementById('renewalEditProvider').value = '';
-    document.getElementById('renewalEditExpireDate').value = '';
+    
+    // 默认到期日设为明年今日
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    document.getElementById('renewalEditExpireDate').value = nextYear.toISOString().split('T')[0];
+    
     if (document.getElementById('renewalEditRemindDays')) document.getElementById('renewalEditRemindDays').value = '30';
     document.getElementById('renewalEditCost').value = '';
     document.getElementById('renewalEditUrl').value = '';
@@ -2195,18 +2238,216 @@ const App = {
     if (document.getElementById('renewalEditCompanyId')) document.getElementById('renewalEditCompanyId').value = '0';
     if (document.getElementById('renewalEditProjectId')) document.getElementById('renewalEditProjectId').value = '0';
 
+    if (document.getElementById('renewalLoginAccount')) document.getElementById('renewalLoginAccount').value = '';
+    if (document.getElementById('renewalLoginPassword')) document.getElementById('renewalLoginPassword').value = '';
+    if (document.getElementById('renewalClearPassword')) document.getElementById('renewalClearPassword').checked = false;
+    if (document.getElementById('renewalAutoLoginType')) document.getElementById('renewalAutoLoginType').value = 'copy_and_jump';
+    if (document.getElementById('renewalPostTargetUrl')) document.getElementById('renewalPostTargetUrl').value = '';
+    if (document.getElementById('renewalPostTargetGroup')) document.getElementById('renewalPostTargetGroup').style.display = 'none';
+    if (document.getElementById('renewalCurrentPassStatus')) {
+      document.getElementById('renewalCurrentPassStatus').innerHTML = '<span style="color:var(--text-muted)">未设置安全密保</span>';
+    }
+
     const titleText = document.getElementById('renewalModalTitleText');
-    if (titleText) titleText.innerText = '新增续费资产 (Renewal Radar)';
+    if (titleText) titleText.innerText = '➕ 新增续费资产 (Renewal Radar)';
     const delBtn = document.getElementById('renewalModalDeleteBtn');
     if (delBtn) delBtn.style.display = 'none';
 
     document.getElementById('renewalModal').style.display = 'flex';
   },
 
-  // 续费项弹窗 - 编辑
+  // 续费项快捷延期辅助函数 (+1年, +6个月, +3个月, +1个月, 今日起算+1年)
+  adjustRenewalExpireDate(num, unit, fromToday = false) {
+    const input = document.getElementById('renewalEditExpireDate');
+    if (!input) return;
+    let base = (fromToday || !input.value) ? new Date() : new Date(input.value);
+    if (isNaN(base.getTime())) base = new Date();
+    if (unit === 'year') {
+      base.setFullYear(base.getFullYear() + num);
+    } else if (unit === 'month') {
+      base.setMonth(base.getMonth() + num);
+    }
+    input.value = base.toISOString().split('T')[0];
+    this.showToast(`到期日已快速更新为: ${input.value}`);
+  },
+
+  // 移动端资产速览抽屉 (Detail Sheet: 查看为主，带快捷延期与控制台直达)
+  openRenewalDetailSheet(id) {
+    const r = (this.state.renewals || []).find(x => String(x.id) === String(id));
+    if (!r) {
+      this.showToast('未找到该资产数据，请刷新重试', 'error');
+      return;
+    }
+
+    const categoryMap = {
+      domain: { label: '域名', icon: '🌐' },
+      server: { label: '云服务器', icon: '🖥️' },
+      ssl: { label: 'SSL证书', icon: '🔒' },
+      saas: { label: 'SaaS软件', icon: '💼' },
+      other: { label: '其他到期', icon: '📦' }
+    };
+    const catMeta = categoryMap[r.category] || categoryMap.other;
+
+    let badgeClass = 'normal';
+    let statusText = `🟢 正常使用 (剩 ${r.days_left} 天)`;
+    let bannerBg = 'var(--bg-subtle)';
+    let bannerBorder = '1px solid var(--border-light)';
+
+    if (r.days_left < 0 || r.status_level === 'expired') {
+      badgeClass = 'danger';
+      statusText = `⚫ 已过期 (${Math.abs(r.days_left)}天前)`;
+      bannerBg = 'rgba(51, 51, 51, 0.08)';
+      bannerBorder = '1px solid rgba(51, 51, 51, 0.2)';
+    } else if (r.days_left <= 7 || r.status_level === 'danger') {
+      badgeClass = 'danger';
+      statusText = `🚨 紧急到期 (仅剩 ${r.days_left} 天)`;
+      bannerBg = 'rgba(235, 87, 87, 0.1)';
+      bannerBorder = '1px solid rgba(235, 87, 87, 0.3)';
+    } else if (r.days_left <= 30 || r.status_level === 'warning') {
+      badgeClass = 'warning';
+      statusText = `⚠️ 临期预警 (剩 ${r.days_left} 天)`;
+      bannerBg = 'rgba(242, 153, 74, 0.1)';
+      bannerBorder = '1px solid rgba(242, 153, 74, 0.3)';
+    }
+
+    const catIconEl = document.getElementById('sheetCatIcon');
+    if (catIconEl) catIconEl.innerText = catMeta.icon;
+
+    const titleEl = document.getElementById('sheetTitleText');
+    if (titleEl) titleEl.innerText = r.name || '资产详情';
+
+    const bannerEl = document.getElementById('sheetStatusBanner');
+    if (bannerEl) {
+      bannerEl.style.background = bannerBg;
+      bannerEl.style.border = bannerBorder;
+    }
+
+    const statusEl = document.getElementById('sheetStatusText');
+    if (statusEl) statusEl.innerHTML = `<span class="badge-status ${badgeClass}" style="font-size:12px;padding:2px 8px">${statusText}</span>`;
+
+    const expireEl = document.getElementById('sheetExpireDate');
+    if (expireEl) expireEl.innerText = r.expire_date || '-';
+
+    const compEl = document.getElementById('sheetCompany');
+    if (compEl) {
+      compEl.innerText = r.company_short_name 
+        ? `${r.company_short_name}` 
+        : (r.company_name || '通用/未指定');
+      compEl.title = r.company_name || '';
+    }
+
+    const projEl = document.getElementById('sheetProject');
+    if (projEl) projEl.innerText = r.project_name || '通用/未绑定';
+
+    const provEl = document.getElementById('sheetProvider');
+    if (provEl) provEl.innerText = r.provider || '未填写服务商';
+
+    const costEl = document.getElementById('sheetCost');
+    if (costEl) costEl.innerText = `￥${parseFloat(r.cost || 0).toFixed(2)}`;
+
+    // 账号与安全密保展示
+    const accValEl = document.getElementById('sheetAccountVal');
+    if (accValEl) {
+      const parts = [];
+      if (r.login_account) parts.push(`<div><strong>登录账号:</strong> ${r.login_account}</div>`);
+      if (r.has_password) parts.push(`<div style="color:var(--success-color)"><strong>安全密保:</strong> 🔒 已配置加密密保凭据</div>`);
+      if (r.account_note) parts.push(`<div><strong>备忘说明:</strong> ${r.account_note}</div>`);
+      accValEl.innerHTML = parts.length > 0 ? parts.join('') : '<span style="color:var(--text-muted)">暂无登录账号或备忘说明</span>';
+    }
+
+    const idInput = document.getElementById('sheetRenewalId');
+    if (idInput) idInput.value = r.id;
+
+    // 控制台直达按钮
+    const launchWrap = document.getElementById('sheetLaunchBtnWrap');
+    if (launchWrap) {
+      if (r.renew_url) {
+        if (r.has_password) {
+          launchWrap.innerHTML = `<button type="button" class="btn btn-primary" onclick="App.launchTarget('renewal', '${r.id}', '${this.formatUrl(r.renew_url)}')">直达并快填 ↗</button>`;
+        } else {
+          launchWrap.innerHTML = `<a href="${this.formatUrl(r.renew_url)}" target="_blank" class="btn btn-primary">控制台直达 ↗</a>`;
+        }
+      } else {
+        launchWrap.innerHTML = '';
+      }
+    }
+
+    const sheet = document.getElementById('renewalDetailSheet');
+    if (sheet) sheet.style.display = 'flex';
+  },
+
+  // 移动端抽屉快捷延期 (+1年, +6个月, +3个月, 今日起算+1年)
+  async quickExtendCurrentRenewal(num, unit, fromToday = false) {
+    const id = document.getElementById('sheetRenewalId') ? document.getElementById('sheetRenewalId').value : null;
+    if (!id) return;
+    const r = (this.state.renewals || []).find(x => String(x.id) === String(id));
+    if (!r) {
+      this.showToast('未找到该资产数据', 'error');
+      return;
+    }
+
+    let base = (fromToday || !r.expire_date) ? new Date() : new Date(r.expire_date);
+    if (isNaN(base.getTime())) base = new Date();
+    if (unit === 'year') {
+      base.setFullYear(base.getFullYear() + num);
+    } else if (unit === 'month') {
+      base.setMonth(base.getMonth() + num);
+    }
+    const newDate = base.toISOString().split('T')[0];
+
+    try {
+      const res = await fetch('api.php?action=save_renewal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: Number(r.id),
+          company_id: Number(r.company_id || 0),
+          project_id: Number(r.project_id || 0),
+          name: r.name,
+          category: r.category || 'domain',
+          provider: r.provider || '',
+          expire_date: newDate,
+          remind_days: Number(r.remind_days || 30),
+          cost: parseFloat(r.cost || 0),
+          renew_url: r.renew_url || '',
+          account_note: r.account_note || '',
+          login_account: r.login_account || '',
+          clear_password: false,
+          auto_login_type: r.auto_login_type || 'copy_and_jump',
+          post_target_url: r.post_target_url || ''
+        })
+      }).then(res => res.json());
+
+      if (res.success) {
+        this.showToast(`⚡ 资产已成功延期至: ${newDate}`);
+        await this.loadRenewals();
+        if (this.state.currentTab === 'dashboard') this.loadDashboard();
+        if (this.state.currentProjectId) this.loadProjectDetail(this.state.currentProjectId);
+        this.openRenewalDetailSheet(r.id);
+      } else {
+        this.showToast(res.message || '延期更新失败', 'error');
+      }
+    } catch (e) {
+      this.showToast('请求异常: ' + e.message, 'error');
+    }
+  },
+
+  // 从抽屉进入完整编辑模态框
+  editFromSheet() {
+    const id = document.getElementById('sheetRenewalId') ? document.getElementById('sheetRenewalId').value : null;
+    this.closeAllModals();
+    if (id) {
+      this.openEditRenewalModal(id);
+    }
+  },
+
+  // 续费项弹窗 - 编辑修改
   openEditRenewalModal(id) {
-    const r = this.state.renewals.find(x => x.id === id);
-    if (!r) return;
+    const r = (this.state.renewals || []).find(x => String(x.id) === String(id));
+    if (!r) {
+      this.showToast('未找到该资产数据，请刷新重试', 'error');
+      return;
+    }
 
     this.updateCompanyDropdowns();
 
@@ -2229,8 +2470,33 @@ const App = {
       document.getElementById('renewalEditProjectId').value = String(r.project_id || 0);
     }
 
+    // 凭据配置
+    if (document.getElementById('renewalLoginAccount')) {
+      document.getElementById('renewalLoginAccount').value = r.login_account || '';
+    }
+    if (document.getElementById('renewalLoginPassword')) {
+      document.getElementById('renewalLoginPassword').value = '';
+    }
+    if (document.getElementById('renewalClearPassword')) {
+      document.getElementById('renewalClearPassword').checked = false;
+    }
+    if (document.getElementById('renewalAutoLoginType')) {
+      document.getElementById('renewalAutoLoginType').value = r.auto_login_type || 'copy_and_jump';
+    }
+    if (document.getElementById('renewalPostTargetUrl')) {
+      document.getElementById('renewalPostTargetUrl').value = r.post_target_url || '';
+    }
+    if (document.getElementById('renewalPostTargetGroup')) {
+      document.getElementById('renewalPostTargetGroup').style.display = (r.auto_login_type === 'post_submit') ? 'block' : 'none';
+    }
+    if (document.getElementById('renewalCurrentPassStatus')) {
+      document.getElementById('renewalCurrentPassStatus').innerHTML = r.has_password 
+        ? '<span style="color:var(--success-color);font-weight:600">🔒 已配置加密密保 (留空不改)</span>' 
+        : '<span style="color:var(--text-muted)">未设置安全密保</span>';
+    }
+
     const titleText = document.getElementById('renewalModalTitleText');
-    if (titleText) titleText.innerText = `维护续费资产 (${r.name})`;
+    if (titleText) titleText.innerText = `✏️ 编辑维护资产: ${r.name}`;
 
     const delBtn = document.getElementById('renewalModalDeleteBtn');
     if (delBtn) {
@@ -2244,7 +2510,7 @@ const App = {
     document.getElementById('renewalModal').style.display = 'flex';
   },
 
-  // 保存资产
+  // 保存资产修改
   async saveRenewalItem() {
     const id = document.getElementById('renewalEditId').value;
     const name = document.getElementById('renewalEditName').value.trim();
@@ -2259,36 +2525,53 @@ const App = {
     if (renewUrl) renewUrl = this.formatUrl(renewUrl);
     const accountNote = document.getElementById('renewalEditNote').value.trim();
 
+    const loginAccount = document.getElementById('renewalLoginAccount') ? document.getElementById('renewalLoginAccount').value.trim() : '';
+    const loginPassword = document.getElementById('renewalLoginPassword') ? document.getElementById('renewalLoginPassword').value : '';
+    const clearPassword = document.getElementById('renewalClearPassword') ? document.getElementById('renewalClearPassword').checked : false;
+    const autoLoginType = document.getElementById('renewalAutoLoginType') ? document.getElementById('renewalAutoLoginType').value : 'copy_and_jump';
+    let postTargetUrl = document.getElementById('renewalPostTargetUrl') ? document.getElementById('renewalPostTargetUrl').value.trim() : '';
+    if (postTargetUrl) postTargetUrl = this.formatUrl(postTargetUrl);
+
     if (!name || !expireDate) { 
       this.showToast('请填写资产名称与到期日期', 'error'); 
       return; 
     }
 
-    const res = await fetch('api.php?action=save_renewal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        id: id ? Number(id) : 0, 
-        company_id: Number(companyId),
-        project_id: Number(projectId),
-        name, 
-        category, 
-        provider, 
-        expire_date: expireDate, 
-        remind_days: Number(remindDays),
-        cost, 
-        renew_url: renewUrl, 
-        account_note: accountNote 
-      })
-    }).then(r => r.json());
+    try {
+      const res = await fetch('api.php?action=save_renewal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: id ? Number(id) : 0, 
+          company_id: Number(companyId),
+          project_id: Number(projectId),
+          name, 
+          category, 
+          provider, 
+          expire_date: expireDate, 
+          remind_days: Number(remindDays),
+          cost: cost ? parseFloat(cost) : 0, 
+          renew_url: renewUrl, 
+          account_note: accountNote,
+          login_account: loginAccount,
+          login_password: loginPassword,
+          clear_password: clearPassword,
+          auto_login_type: autoLoginType,
+          post_target_url: postTargetUrl
+        })
+      }).then(r => r.json());
 
-    if (res.success) {
-      this.closeAllModals();
-      await this.loadRenewals();
-      if (this.state.currentTab === 'dashboard') this.loadDashboard();
-      this.showToast('资产续费项已成功保存！');
-    } else {
-      this.showToast(res.message || '保存失败', 'error');
+      if (res.success) {
+        this.closeAllModals();
+        await this.loadRenewals();
+        if (this.state.currentTab === 'dashboard') this.loadDashboard();
+        if (this.state.currentProjectId) this.loadProjectDetail(this.state.currentProjectId);
+        this.showToast(id ? '✅ 资产信息已成功更新！' : '✅ 新增资产成功！');
+      } else {
+        this.showToast(res.message || '保存失败', 'error');
+      }
+    } catch (e) {
+      this.showToast('网络请求异常: ' + e.message, 'error');
     }
   },
 
@@ -2325,6 +2608,7 @@ const App = {
         this.closeAllModals();
         await this.loadRenewals();
         if (this.state.currentTab === 'dashboard') this.loadDashboard();
+        if (this.state.currentProjectId) this.loadProjectDetail(this.state.currentProjectId);
         this.showToast('资产已成功删除！');
       } else {
         this.showToast(res.message || '删除失败', 'error');
@@ -2363,6 +2647,7 @@ const App = {
         if (row) row.remove();
         await this.loadRenewals();
         if (this.state.currentTab === 'dashboard') this.loadDashboard();
+        if (this.state.currentProjectId) this.loadProjectDetail(this.state.currentProjectId);
         this.showToast('资产已成功删除！');
       } else {
         this.showToast(res.message || '删除失败', 'error');
