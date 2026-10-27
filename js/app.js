@@ -213,7 +213,6 @@ const App = {
       case 'settings':
         this.loadConfigSettings();
         this.loadUsers();
-        this.renderPortalsTable('settingsPortalsTableBody');
         break;
     }
   },

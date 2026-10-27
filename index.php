@@ -686,37 +686,7 @@ if (IS_PRODUCTION) {
           </div>
         </div>
 
-        <hr style="margin:20px 0;border:none;border-top:1px solid var(--border-light)">
 
-        <!-- 常用直达业务通道设置 -->
-        <div style="margin:16px 0 20px 0">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <div>
-              <div style="font-weight:600;font-size:14px;color:var(--text-main)">⚡ 常用直达通道管理</div>
-              <div style="font-size:12px;color:var(--text-muted)">设置与修改工作台顶部的常用业务直达平台、跳转网址与安全密码凭据</div>
-            </div>
-            <button class="btn btn-sm btn-secondary" onclick="App.openAddPortalModal()">+ 新增直达通道</button>
-          </div>
-
-          <div class="notion-table-container" style="margin-bottom:0">
-            <table class="notion-table">
-              <thead>
-                <tr>
-                  <th style="width:24%">平台名称</th>
-                  <th style="width:16%">业务分类</th>
-                  <th style="width:34%">跳转网址</th>
-                  <th style="width:12%">安全密保</th>
-                  <th style="text-align:right">操作</th>
-                </tr>
-              </thead>
-              <tbody id="settingsPortalsTableBody">
-                <tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-muted)">加载中...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <hr style="margin:20px 0;border:none;border-top:1px solid var(--border-light)">
 
         <div style="font-weight:600;font-size:14px;margin-bottom:12px">🤖 AI 大模型服务配置</div>
 
