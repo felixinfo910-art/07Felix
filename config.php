@@ -54,7 +54,7 @@ if (IS_PRODUCTION) {
     ini_set('display_errors', '1');
 }
 
-// 全局异常守护，防止致命错误导致 500 空白无响应
+// 全局异常与致命错误守护，确保任何未捕获错误均以标准 JSON 输出，防止前端 response.json() 抛出 Unexpected end of JSON
 set_exception_handler(function($e) {
     $msg = $e->getMessage();
     $file = basename($e->getFile());
@@ -69,6 +69,24 @@ set_exception_handler(function($e) {
         'message' => "服务异常 [{$file}:{$line}]: " . $msg
     ], JSON_UNESCAPED_UNICODE);
     exit;
+});
+
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        $msg = $error['message'];
+        $file = basename($error['file']);
+        $line = $error['line'];
+        error_log("[Fatal Error] {$msg} in {$file}:{$line}");
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(500);
+        }
+        echo json_encode([
+            'success' => false,
+            'message' => "致命错误 [{$file}:{$line}]: " . $msg
+        ], JSON_UNESCAPED_UNICODE);
+    }
 });
 
 // 3. 安全启动会话

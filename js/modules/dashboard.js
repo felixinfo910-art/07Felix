@@ -1,33 +1,67 @@
 export const DashboardModule = {
   async loadDashboard() {
     try {
-      const res = await fetch('api.php?action=dashboard').then(r => r.json());
-      if (!res.success) return;
+      const resp = await fetch('api.php?action=dashboard');
+      if (!resp.ok) {
+        console.warn(`[Dashboard] 接口响应异常: HTTP ${resp.status}`);
+        return;
+      }
+      const rawText = await resp.text();
+      if (!rawText || !rawText.trim()) {
+        console.warn('[Dashboard] 接口返回了空响应');
+        return;
+      }
+      let res;
+      try {
+        res = JSON.parse(rawText);
+      } catch (parseErr) {
+        console.warn('[Dashboard] 返回内容非合法 JSON:', rawText.slice(0, 100));
+        return;
+      }
+
+      if (!res.success) {
+        if (res.message && res.message.includes('登录')) {
+          if (typeof this.showLoginModal === 'function') this.showLoginModal();
+        }
+        return;
+      }
       const data = res.data;
+      if (!data || !data.metrics) return;
       this.state.dashboardData = data;
 
       // 更新 KPI
-      document.getElementById('kpiReimbAmount').innerText = '￥' + data.metrics.reimb_pending_amount.toLocaleString('zh-CN', { minimumFractionDigits: 2 });
-      document.getElementById('kpiUrgentRenewals').innerText = data.metrics.urgent_renewals_count;
-      document.getElementById('kpiDailyTasks').innerText = `${data.metrics.daily_task_done} / ${data.metrics.daily_task_total}`;
-      document.getElementById('kpiProjectCount').innerText = `${data.metrics.project_count} 项目 (${data.metrics.link_count} 入口)`;
+      const reimbEl = document.getElementById('kpiReimbAmount');
+      if (reimbEl) reimbEl.innerText = '￥' + (data.metrics.reimb_pending_amount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2 });
+      
+      const urgentCountEl = document.getElementById('kpiUrgentRenewals');
+      if (urgentCountEl) urgentCountEl.innerText = data.metrics.urgent_renewals_count || 0;
+      
+      const dailyTasksEl = document.getElementById('kpiDailyTasks');
+      if (dailyTasksEl) dailyTasksEl.innerText = `${data.metrics.daily_task_done || 0} / ${data.metrics.daily_task_total || 0}`;
+      
+      const projectCountEl = document.getElementById('kpiProjectCount');
+      if (projectCountEl) projectCountEl.innerText = `${data.metrics.project_count || 0} 项目 (${data.metrics.link_count || 0} 入口)`;
 
       // 紧急到期提醒横幅
       const banner = document.getElementById('urgentBanner');
-      if (data.metrics.urgent_renewals_count > 0) {
-        banner.style.display = 'flex';
-        document.getElementById('urgentBannerText').innerHTML = `<strong>急迫提醒：</strong>有 <strong>${data.metrics.urgent_renewals_count}</strong> 项核心资产即将在 7 天内到期！`;
-      } else {
-        banner.style.display = 'none';
+      if (banner) {
+        if (data.metrics.urgent_renewals_count > 0) {
+          banner.style.display = 'flex';
+          const bannerText = document.getElementById('urgentBannerText');
+          if (bannerText) bannerText.innerHTML = `<strong>急迫提醒：</strong>有 <strong>${data.metrics.urgent_renewals_count}</strong> 项核心资产即将在 7 天内到期！`;
+        } else {
+          banner.style.display = 'none';
+        }
       }
 
       // 临期列表速览
       const urgentListEl = document.getElementById('dashUrgentList');
       if (urgentListEl) {
-        if (data.urgent_renewals.length === 0) {
+        const urgentItems = data.urgent_renewals || [];
+        if (urgentItems.length === 0) {
           urgentListEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">近期无急迫到期资产，运行安全。</div>`;
         } else {
-          urgentListEl.innerHTML = data.urgent_renewals.map(r => `
+          urgentListEl.innerHTML = urgentItems.map(r => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-light)">
               <div>
                 <span class="renewal-title-link" onclick="App.openEditRenewalModal('${r.id}')" style="font-weight:600;cursor:pointer" title="点击编辑此资产">${r.name}</span>
@@ -46,10 +80,11 @@ export const DashboardModule = {
       // 今日待办速览
       const todayTasksEl = document.getElementById('dashTodayTasks');
       if (todayTasksEl) {
-        if (data.today_tasks.length === 0) {
+        const todayItems = data.today_tasks || [];
+        if (todayItems.length === 0) {
           todayTasksEl.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">今日暂无紧急待办，可轻松推进长期项目。</div>`;
         } else {
-          todayTasksEl.innerHTML = data.today_tasks.map(t => `
+          todayTasksEl.innerHTML = todayItems.map(t => `
             <div class="task-item ${t.status === 'done' ? 'is-done' : ''}" style="margin-bottom:6px;padding:8px 12px">
               <div class="task-checkbox-wrap">
                 <input type="checkbox" class="task-checkbox" ${t.status === 'done' ? 'checked' : ''} onchange="App.toggleTask(${t.id})">
@@ -61,8 +96,7 @@ export const DashboardModule = {
         }
       }
     } catch (e) {
-      console.error(e);
+      console.error('[Dashboard Error]', e);
     }
   },
-
 };
