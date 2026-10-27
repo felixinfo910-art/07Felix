@@ -23,11 +23,14 @@ class Database {
                 self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 self::$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
                 
-                // 性能调优 1: 启用 WAL (Write-Ahead Logging) 并发读写，避免多请求锁库
+                // 性能调优 1: 启用 WAL (Write-Ahead Logging) 并发读写与内存映射加速
                 try {
                     self::$pdo->exec('PRAGMA journal_mode = WAL;');
                     self::$pdo->exec('PRAGMA synchronous = NORMAL;');
                     self::$pdo->exec('PRAGMA busy_timeout = 5000;');
+                    self::$pdo->exec('PRAGMA cache_size = -8000;'); // 8MB 内存页缓存
+                    self::$pdo->exec('PRAGMA mmap_size = 67108864;'); // 64MB 内存映射
+                    self::$pdo->exec('PRAGMA temp_store = MEMORY;');
                 } catch (Throwable $pe) {}
                 
                 // 性能调优 2: 优先比对 user_version，已是最新结构则直接复用，避免每次 API 调用都进行全表扫描
