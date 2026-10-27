@@ -792,6 +792,66 @@ switch ($action) {
         jsonResponse(true, null, '设置已保存');
         break;
 
+    case 'test_ai':
+        $testBaseUrl = rtrim(trim($inputData['ai_base_url'] ?? getConfig('ai_base_url', 'https://api.deepseek.com')), '/');
+        $testModel = trim($inputData['ai_model'] ?? getConfig('ai_model', 'deepseek-chat'));
+        $testKey = trim($inputData['ai_api_key'] ?? '');
+        if (empty($testKey)) {
+            $testKey = getConfig('ai_api_key', '');
+        }
+
+        if (empty($testKey)) {
+            jsonResponse(false, null, '未提供 API Key，请先填入 API Key 后再测试');
+        }
+
+        $endpoint = $testBaseUrl . '/chat/completions';
+        $payload = [
+            'model' => $testModel,
+            'messages' => [
+                ['role' => 'user', 'content' => '测试连接。请回复两个字：收到。']
+            ],
+            'max_tokens' => 20,
+            'temperature' => 0.1
+        ];
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $testKey
+            ],
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            jsonResponse(false, null, '网络连接异常 (cURL): ' . $curlError);
+        }
+
+        $resData = json_decode($response, true);
+        if ($httpCode !== 200) {
+            $errMsg = $resData['error']['message'] ?? ('HTTP 状态码: ' . $httpCode . '，原始响应: ' . mb_substr($response, 0, 150));
+            jsonResponse(false, null, '模型接口报错: ' . $errMsg);
+        }
+
+        $reply = $resData['choices'][0]['message']['content'] ?? '';
+        if (empty($reply)) {
+            jsonResponse(false, null, '接口连通但未返回 choices 文本，请核对模型名称是否匹配');
+        }
+
+        jsonResponse(true, ['reply' => trim($reply), 'model' => $testModel], '连接成功！模型已正常回复');
+        break;
+
     default:
         jsonResponse(false, null, '未知的操作请求');
         break;

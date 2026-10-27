@@ -1,38 +1,24 @@
-// modules/dashboard.js - Dashboard 大盘与核心 KPI
-import { state } from '../state.js';
-import { Api } from '../api.js';
-
 export const DashboardModule = {
   async loadDashboard() {
     try {
-      const res = await Api.get('dashboard');
+      const res = await fetch('api.php?action=dashboard').then(r => r.json());
       if (!res.success) return;
       const data = res.data;
-      state.dashboardData = data;
+      this.state.dashboardData = data;
 
       // 更新 KPI
-      const kpiReimb = document.getElementById('kpiReimbAmount');
-      if (kpiReimb) kpiReimb.innerText = '￥' + data.metrics.reimb_pending_amount.toLocaleString('zh-CN', { minimumFractionDigits: 2 });
-      
-      const kpiUrgent = document.getElementById('kpiUrgentRenewals');
-      if (kpiUrgent) kpiUrgent.innerText = data.metrics.urgent_renewals_count;
-      
-      const kpiTasks = document.getElementById('kpiDailyTasks');
-      if (kpiTasks) kpiTasks.innerText = `${data.metrics.daily_task_done} / ${data.metrics.daily_task_total}`;
-      
-      const kpiProjects = document.getElementById('kpiProjectCount');
-      if (kpiProjects) kpiProjects.innerText = `${data.metrics.project_count} 项目 (${data.metrics.link_count} 入口)`;
+      document.getElementById('kpiReimbAmount').innerText = '￥' + data.metrics.reimb_pending_amount.toLocaleString('zh-CN', { minimumFractionDigits: 2 });
+      document.getElementById('kpiUrgentRenewals').innerText = data.metrics.urgent_renewals_count;
+      document.getElementById('kpiDailyTasks').innerText = `${data.metrics.daily_task_done} / ${data.metrics.daily_task_total}`;
+      document.getElementById('kpiProjectCount').innerText = `${data.metrics.project_count} 项目 (${data.metrics.link_count} 入口)`;
 
       // 紧急到期提醒横幅
       const banner = document.getElementById('urgentBanner');
-      if (banner) {
-        if (data.metrics.urgent_renewals_count > 0) {
-          banner.style.display = 'flex';
-          const bannerText = document.getElementById('urgentBannerText');
-          if (bannerText) bannerText.innerHTML = `<strong>急迫提醒：</strong>有 <strong>${data.metrics.urgent_renewals_count}</strong> 项核心资产即将在 7 天内到期！`;
-        } else {
-          banner.style.display = 'none';
-        }
+      if (data.metrics.urgent_renewals_count > 0) {
+        banner.style.display = 'flex';
+        document.getElementById('urgentBannerText').innerHTML = `<strong>急迫提醒：</strong>有 <strong>${data.metrics.urgent_renewals_count}</strong> 项核心资产即将在 7 天内到期！`;
+      } else {
+        banner.style.display = 'none';
       }
 
       // 临期列表速览
@@ -49,7 +35,7 @@ export const DashboardModule = {
               </div>
               <div style="display:flex;align-items:center;gap:6px">
                 <span class="badge-status danger">剩 ${r.days_left} 天到期</span>
-                ${r.renew_url ? `<a href="${App.formatUrl(r.renew_url)}" target="_blank" class="btn btn-sm btn-secondary" title="官网控制台直达">直达 ↗</a>` : ''}
+                ${r.renew_url ? `<a href="${this.formatUrl(r.renew_url)}" target="_blank" class="btn btn-sm btn-secondary" title="官网控制台直达">直达 ↗</a>` : ''}
                 <button class="btn btn-sm btn-primary" onclick="App.openEditRenewalModal('${r.id}')" title="编辑维护此资产">✏️ 编辑</button>
               </div>
             </div>
@@ -75,7 +61,8 @@ export const DashboardModule = {
         }
       }
     } catch (e) {
-      console.error('loadDashboard failed:', e);
+      console.error(e);
     }
-  }
+  },
+
 };
