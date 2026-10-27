@@ -1127,7 +1127,6 @@ a {
   border-radius: 12px;
   font-size: 14px;
   line-height: 1.7;
-  white-space: pre-wrap;
   word-break: break-word;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
@@ -1138,6 +1137,7 @@ a {
   color: var(--text-main);
   border: 1px solid var(--border-medium);
   border-bottom-right-radius: 3px;
+  white-space: pre-wrap;
 }
 
 .chat-bubble.ai {
@@ -1147,6 +1147,101 @@ a {
   border: 1px solid var(--border-light);
   border-left: 3px solid #2383e2;
   border-bottom-left-radius: 3px;
+}
+
+/* AI 对话富文本 Markdown 排版规范 */
+.chat-bubble.ai strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.chat-bubble.ai .md-h2,
+.chat-bubble.ai .md-h3,
+.chat-bubble.ai .md-h4,
+.chat-bubble.ai .md-h5 {
+  margin: 12px 0 6px 0;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+.chat-bubble.ai .md-h2 { font-size: 16px; border-bottom: 1px solid var(--border-light); padding-bottom: 4px; }
+.chat-bubble.ai .md-h3 { font-size: 15px; }
+.chat-bubble.ai .md-h4 { font-size: 14px; }
+.chat-bubble.ai .md-h5 { font-size: 13px; }
+
+.chat-bubble.ai .md-paragraph-break {
+  height: 10px;
+}
+
+.chat-bubble.ai .md-list-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 4px 0;
+  line-height: 1.6;
+}
+.chat-bubble.ai .md-bullet {
+  color: #2383e2;
+  font-weight: bold;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.chat-bubble.ai .md-number {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12.5px;
+  flex-shrink: 0;
+}
+
+.chat-bubble.ai .md-quote {
+  margin: 8px 0;
+  padding: 6px 12px;
+  border-left: 3px solid var(--accent-color);
+  background: var(--bg-hover);
+  border-radius: 0 4px 4px 0;
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+
+.chat-bubble.ai .md-inline-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: var(--bg-hover);
+  color: #e06c75;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  border: 1px solid var(--border-light);
+}
+
+.chat-bubble.ai .md-code-block {
+  margin: 10px 0;
+  background: #1e1e1e;
+  color: #abb2bf;
+  border-radius: 6px;
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.chat-bubble.ai .md-code-lang {
+  padding: 4px 10px;
+  background: #282c34;
+  color: #828997;
+  font-size: 11px;
+  text-transform: uppercase;
+  border-bottom: 1px solid #3e4451;
+}
+.chat-bubble.ai .md-code-block code {
+  display: block;
+  padding: 10px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.chat-bubble.ai .md-divider {
+  border: none;
+  border-top: 1px dashed var(--border-light);
+  margin: 12px 0;
 }
 
 .ai-input-area {

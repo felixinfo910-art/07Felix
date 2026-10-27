@@ -1,4 +1,57 @@
 export const KnowledgeModule = {
+  // 极简高性能纯原生 Markdown 渲染解析器 (无需第三方网络依赖，开箱即用)
+  renderMarkdown(text) {
+    if (!text) return '';
+    let html = String(text);
+
+    // 1. 转义基础 HTML 字符防止 XSS
+    html = html
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // 2. 多行代码块 ```lang\ncode\n```
+    html = html.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+      return `<pre class="md-code-block"><div class="md-code-lang">${lang || 'code'}</div><code>${code.trim()}</code></pre>`;
+    });
+
+    // 3. 行内代码 `code`
+    html = html.replace(/`([^`\n]+)`/g, '<code class="md-inline-code">$1</code>');
+
+    // 4. 标题 # ~ ####
+    html = html.replace(/^#### (.*?)$/gm, '<h5 class="md-h5">$1</h5>');
+    html = html.replace(/^### (.*?)$/gm, '<h4 class="md-h4">$1</h4>');
+    html = html.replace(/^## (.*?)$/gm, '<h3 class="md-h3">$1</h3>');
+    html = html.replace(/^# (.*?)$/gm, '<h2 class="md-h2">$1</h2>');
+
+    // 5. 强调与加粗 **bold** 或 __bold__
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+    // 6. 斜体 *italic*
+    html = html.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+
+    // 7. 引用块 > text
+    html = html.replace(/^\> (.*?)$/gm, '<blockquote class="md-quote">$1</blockquote>');
+
+    // 8. 无序列表 - item 或 * item
+    html = html.replace(/^[\-\*] (.*?)$/gm, '<div class="md-list-item"><span class="md-bullet">•</span><span>$1</span></div>');
+
+    // 9. 有序列表 1. item
+    html = html.replace(/^(\d+)\. (.*?)$/gm, '<div class="md-list-item"><span class="md-number">$1.</span><span>$2</span></div>');
+
+    // 10. 分割线 ---
+    html = html.replace(/^---$/gm, '<hr class="md-divider" />');
+
+    // 11. 普通段落与换行处理
+    // 连续两个以上换行切为段落间距
+    html = html.replace(/\n\n+/g, '<div class="md-paragraph-break"></div>');
+    // 单换行转为 <br> (注意代码块与列表除外)
+    html = html.replace(/\n/g, '<br>');
+
+    return html;
+  },
+
   async loadKnowledge() {
     try {
       const res = await fetch('api.php?action=get_knowledge').then(r => r.json());
@@ -187,7 +240,7 @@ export const KnowledgeModule = {
       }).then(r => r.json());
 
       if (res.success) {
-        aiBubble.innerText = res.data.reply;
+        aiBubble.innerHTML = this.renderMarkdown(res.data.reply);
         this.state.aiChatHistory.push({ role: 'user', content: prompt });
         this.state.aiChatHistory.push({ role: 'assistant', content: res.data.reply });
 
@@ -196,10 +249,10 @@ export const KnowledgeModule = {
           this.handleAiTasksParse(res.data.reply);
         }
       } else {
-        aiBubble.innerText = '❌ ' + res.message;
+        aiBubble.innerHTML = `<span style="color:var(--danger-color)">❌ ${this.renderMarkdown(res.message || '回复失败')}</span>`;
       }
     } catch (e) {
-      aiBubble.innerText = '❌ 请求异常: ' + e.message;
+      aiBubble.innerHTML = `<span style="color:var(--danger-color)">❌ 请求异常: ${e.message}</span>`;
     }
     messagesList.scrollTop = messagesList.scrollHeight;
   },

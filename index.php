@@ -8,7 +8,8 @@ $cssVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/css/app.css') ? filemtime(__D
 $jsVer = max(
     file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR__ . '/js/app.js') : 0,
     file_exists(__DIR__ . '/js/modules/dashboard.js') ? filemtime(__DIR__ . '/js/modules/dashboard.js') : 0,
-    file_exists(__DIR__ . '/js/modules/settings.js') ? filemtime(__DIR__ . '/js/modules/settings.js') : 0
+    file_exists(__DIR__ . '/js/modules/settings.js') ? filemtime(__DIR__ . '/js/modules/settings.js') : 0,
+    file_exists(__DIR__ . '/js/modules/knowledge.js') ? filemtime(__DIR__ . '/js/modules/knowledge.js') : 0
 );
 if (!$jsVer) $jsVer = time();
 
