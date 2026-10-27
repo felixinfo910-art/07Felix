@@ -7,11 +7,13 @@ echo "--------------------------------------------------------"
 echo "🚀 正在从远程 Git 仓库同步最新代码..."
 echo "--------------------------------------------------------"
 
-git fetch origin main
+git fetch --all --prune
 git reset --hard origin/main
 
 if [ $? -eq 0 ]; then
-    echo "✅ 源码已成功强制对齐 GitHub 最新版本！"
+    CURRENT_COMMIT=$(git log -1 --pretty=format:"%h - %s (%cd)" --date=format:"%Y-%m-%d %H:%M")
+    echo "✅ 源码已成功对齐 GitHub 最新版本！"
+    echo "📌 当前生效版本: $CURRENT_COMMIT"
 else
     echo "⚠️ Git 同步异常，请检查网络或 SSH 密钥。"
     exit 1
