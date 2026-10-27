@@ -1,8 +1,4 @@
-
-  <!-- 右侧主内容区域 -->
-  <div class="main-content-layout">
-    <!-- 顶部极简工作条 -->
-    <header class="top-header">
+<header class="top-header">
       <div class="header-left">
         <button class="mobile-toggle-btn" onclick="App.toggleSidebar(true)" title="展开菜单" aria-label="展开菜单">
           <span>☰</span>
@@ -30,4 +26,4 @@
           <button class="btn btn-sm btn-secondary" onclick="App.logout()" title="安全退出登录" style="font-size:12px;padding:4px 8px;color:var(--text-muted)">退出</button>
         </div>
       </div>
-    </header>
+    </header>

@@ -1,11 +1,4 @@
-<body>
-
-<div class="app-container">
-  <!-- 侧边栏遮罩 (移动端展开时) -->
-  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="App.toggleSidebar(false)"></div>
-
-  <!-- 左侧固定边栏 -->
-  <aside class="app-sidebar" id="appSidebar">
+<aside class="app-sidebar" id="appSidebar">
     <!-- 侧边栏顶部品牌信息 -->
     <div class="sidebar-header">
       <div class="brand-section">
@@ -73,4 +66,5 @@
           <option value="business">💼 商务稳健深蓝</option>
         </select>
       </div>
-    </div>
+    </div>
+  </aside>
