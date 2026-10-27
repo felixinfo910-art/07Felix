@@ -4,6 +4,11 @@ $appTitle = getConfig('app_title', 'Felix 管理者工作台');
 $theme = getConfig('theme', 'notion');
 $cssVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/css/app.css') ? filemtime(__DIR__ . '/css/app.css') : '1.0') : time();
 $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR__ . '/js/app.js') : '1.0') : time();
+
+// 优化：生产环境开启协商缓存头，避免每次刷新重复重新传输 HTML 模板
+if (IS_PRODUCTION) {
+    header("Cache-Control: private, must-revalidate, max-age=60");
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="<?php echo htmlspecialchars($theme); ?>">
@@ -11,6 +16,10 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title><?php echo htmlspecialchars($appTitle); ?></title>
+  
+  <!-- 性能优化：并行预加载核心 JS 脚本与样式，消灭网络等待空白 -->
+  <link rel="preload" href="css/app.css?v=<?php echo $cssVer; ?>" as="style">
+  <link rel="preload" href="js/app.js?v=<?php echo $jsVer; ?>" as="script">
   
   <!-- PWA 支持：添加到手机主屏幕即为独立 App -->
   <meta name="apple-mobile-web-app-capable" content="yes">
