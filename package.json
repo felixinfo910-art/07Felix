@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Felix 管理者个人数字工作台 (Notion 纸面质感版)",
   "scripts": {
-    "dev": "php -S 0.0.0.0:8088 -t .",
-    "start": "php -S 0.0.0.0:8088 -t ."
+    "dev": "dev.bat",
+    "start": "dev.bat"
   },
   "keywords": ["manager", "dashboard", "workbench"],
   "author": "Felix"
