@@ -34,6 +34,12 @@ const App = {
   ...SecurityModule
 };
 
+// 确保关键事件直达函数优先稳固绑定至 window.App
+App.switchSettingsSubTab = SettingsModule.switchSettingsSubTab.bind(App);
+App.saveCardProfile = SettingsModule.saveCardProfile.bind(App);
+App.onCardStyleChange = SettingsModule.onCardStyleChange.bind(App);
+App.syncCardPreview = SettingsModule.syncCardPreview.bind(App);
+
 // 挂载至全局 window 对象，保持与 HTML 内联 onclick="App.xxx()" 100% 完美兼容
 window.App = App;
 

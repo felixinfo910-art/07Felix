@@ -5,11 +5,11 @@ require_once __DIR__ . '/config.php';
 $appTitle = getConfig('app_title', 'Felix 管理者工作台');
 $theme = getConfig('theme', 'notion');
 $cssVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/css/app.css') ? filemtime(__DIR__ . '/css/app.css') : '1.0') : time();
-$jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR__ . '/js/app.js') : '1.0') : time();
+$jsVer = file_exists(__DIR__ . '/js/modules/settings.js') ? filemtime(__DIR__ . '/js/modules/settings.js') : time();
 
-// 生产模式开启协商缓存头
+// 线上协商缓存头
 if (IS_PRODUCTION) {
-    header("Cache-Control: private, must-revalidate, max-age=60");
+    header("Cache-Control: no-cache, must-revalidate");
 }
 ?>
 <!DOCTYPE html>
