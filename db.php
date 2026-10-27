@@ -30,16 +30,17 @@ class Database {
                     self::$pdo->exec('PRAGMA busy_timeout = 5000;');
                 } catch (Throwable $pe) {}
                 
-                // 自愈检查：不仅依赖 user_version，还动态检查核心表 companies / admin_users 是否存在
-                $tables = self::$pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('companies', 'admin_users', 'projects')")->fetchAll(PDO::FETCH_COLUMN);
+                // 性能调优 2: 优先比对 user_version，已是最新结构则直接复用，避免每次 API 调用都进行全表扫描
                 $dbVersion = (int)self::$pdo->query('PRAGMA user_version')->fetchColumn();
-
-                if ($isNew || count($tables) < 3 || $dbVersion < self::SCHEMA_VERSION) {
-                    self::initTables();
-                    if ($isNew) {
-                        self::seedInitialData();
+                if ($isNew || $dbVersion < self::SCHEMA_VERSION) {
+                    $tables = self::$pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('companies', 'admin_users', 'projects')")->fetchAll(PDO::FETCH_COLUMN);
+                    if ($isNew || count($tables) < 3 || $dbVersion < self::SCHEMA_VERSION) {
+                        self::initTables();
+                        if ($isNew) {
+                            self::seedInitialData();
+                        }
+                        self::$pdo->exec('PRAGMA user_version = ' . self::SCHEMA_VERSION . ';');
                     }
-                    self::$pdo->exec('PRAGMA user_version = ' . self::SCHEMA_VERSION . ';');
                 }
             } catch (Throwable $e) {
                 throw new Exception("数据库连接或初始化失败: " . $e->getMessage());

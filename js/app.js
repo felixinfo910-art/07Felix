@@ -31,10 +31,15 @@ const App = {
 
   async init() {
     this.bindEvents();
+    // 性能优化：首屏请求全部并行发起，彻底消除瀑布流排队等待
     const loggedIn = await this.checkStatusAndLoadConfig();
     if (!loggedIn) return;
-    this.loadQuickPortals();
-    this.switchTab('dashboard');
+    
+    // 登录就绪后，快捷入口与默认大盘数据并发拉取
+    Promise.all([
+      this.loadQuickPortals(),
+      this.switchTab('dashboard')
+    ]);
   },
 
   // 智能规整外部跳转网址：若用户只输入 www.xxx.com，自动前缀 https:// 防止浏览器将其误识别为相对路径
