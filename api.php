@@ -689,10 +689,58 @@ switch ($action) {
         jsonResponse(true, null, '文档已删除');
         break;
 
-    // ---------------- 管理者账号管理 ----------------
+    // ---------------- 管理者账号与名片管理 ----------------
     case 'get_users':
-        $users = $db->query("SELECT id, username, display_name, role, last_login, created_at FROM admin_users ORDER BY id ASC")->fetchAll();
+        $users = $db->query("SELECT id, username, display_name, role, phone, email, company, title, whatsapp, card_style, avatar, last_login, created_at FROM admin_users ORDER BY id ASC")->fetchAll();
         jsonResponse(true, $users);
+        break;
+
+    case 'get_card_profile':
+        $userId = (int)($_SESSION['auth_user_info']['id'] ?? 1);
+        if ($userId <= 0) $userId = 1;
+        $stmt = $db->prepare("SELECT id, username, display_name, role, phone, email, company, title, whatsapp, card_style, avatar FROM admin_users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+        if (!$user) {
+            $user = $db->query("SELECT id, username, display_name, role, phone, email, company, title, whatsapp, card_style, avatar FROM admin_users LIMIT 1")->fetch();
+        }
+        if (!$user) {
+            $user = [
+                'id' => 1,
+                'username' => 'admin',
+                'display_name' => '何志忠',
+                'phone' => '+86 13925521330',
+                'email' => '478244551@qq.com',
+                'company' => '拾贝管家演示企业',
+                'title' => '负责人',
+                'whatsapp' => '+86 13925521330',
+                'card_style' => 'business',
+                'avatar' => ''
+            ];
+        }
+        jsonResponse(true, $user);
+        break;
+
+    case 'save_card_profile':
+        $userId = (int)($_SESSION['auth_user_info']['id'] ?? 1);
+        if ($userId <= 0) $userId = 1;
+        $displayName = trim($inputData['display_name'] ?? '');
+        $phone = trim($inputData['phone'] ?? '');
+        $email = trim($inputData['email'] ?? '');
+        $company = trim($inputData['company'] ?? '');
+        $title = trim($inputData['title'] ?? '');
+        $whatsapp = trim($inputData['whatsapp'] ?? '');
+        $cardStyle = in_array($inputData['card_style'] ?? '', ['business', 'standard']) ? $inputData['card_style'] : 'business';
+        $avatar = trim($inputData['avatar'] ?? '');
+
+        $stmt = $db->prepare("UPDATE admin_users SET display_name = ?, phone = ?, email = ?, company = ?, title = ?, whatsapp = ?, card_style = ?, avatar = ? WHERE id = ?");
+        $stmt->execute([$displayName, $phone, $email, $company, $title, $whatsapp, $cardStyle, $avatar, $userId]);
+
+        if (!empty($_SESSION['auth_user_info'])) {
+            $_SESSION['auth_user_info']['display_name'] = $displayName;
+        }
+
+        jsonResponse(true, null, '我的名片信息已保存');
         break;
 
     case 'save_user':
@@ -701,6 +749,12 @@ switch ($action) {
         $password = trim($inputData['password'] ?? '');
         $displayName = trim($inputData['display_name'] ?? '管理者');
         $role = trim($inputData['role'] ?? 'admin');
+        $phone = trim($inputData['phone'] ?? '');
+        $email = trim($inputData['email'] ?? '');
+        $company = trim($inputData['company'] ?? '');
+        $title = trim($inputData['title'] ?? '');
+        $whatsapp = trim($inputData['whatsapp'] ?? '');
+        $cardStyle = trim($inputData['card_style'] ?? 'business');
 
         if (empty($username)) {
             jsonResponse(false, null, '登录账号为必填项');
@@ -716,11 +770,11 @@ switch ($action) {
         if ($id > 0) {
             if (!empty($password)) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $db->prepare("UPDATE admin_users SET username = ?, password_hash = ?, display_name = ?, role = ? WHERE id = ?");
-                $stmt->execute([$username, $hash, $displayName, $role, $id]);
+                $stmt = $db->prepare("UPDATE admin_users SET username = ?, password_hash = ?, display_name = ?, role = ?, phone = ?, email = ?, company = ?, title = ?, whatsapp = ?, card_style = ? WHERE id = ?");
+                $stmt->execute([$username, $hash, $displayName, $role, $phone, $email, $company, $title, $whatsapp, $cardStyle, $id]);
             } else {
-                $stmt = $db->prepare("UPDATE admin_users SET username = ?, display_name = ?, role = ? WHERE id = ?");
-                $stmt->execute([$username, $displayName, $role, $id]);
+                $stmt = $db->prepare("UPDATE admin_users SET username = ?, display_name = ?, role = ?, phone = ?, email = ?, company = ?, title = ?, whatsapp = ?, card_style = ? WHERE id = ?");
+                $stmt->execute([$username, $displayName, $role, $phone, $email, $company, $title, $whatsapp, $cardStyle, $id]);
             }
             if (!empty($_SESSION['auth_user_info']) && $_SESSION['auth_user_info']['id'] == $id) {
                 $_SESSION['auth_user_info']['username'] = $username;
@@ -731,8 +785,8 @@ switch ($action) {
                 jsonResponse(false, null, '新建账号时初始密码不能为空');
             }
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $db->prepare("INSERT INTO admin_users (username, password_hash, display_name, role) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$username, $hash, $displayName, $role]);
+            $stmt = $db->prepare("INSERT INTO admin_users (username, password_hash, display_name, role, phone, email, company, title, whatsapp, card_style) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$username, $hash, $displayName, $role, $phone, $email, $company, $title, $whatsapp, $cardStyle]);
             $id = $db->lastInsertId();
         }
         jsonResponse(true, ['id' => $id], '账号信息已保存');

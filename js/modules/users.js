@@ -30,10 +30,10 @@ export const UsersModule = {
             </div>
           </td>
           <td>
-            <span style="font-size:13px;color:var(--text-secondary)">${u.display_name || '管理者'}</span>
+            <span style="font-size:13px;color:var(--text-secondary);font-weight:500">${u.display_name || '管理者'}</span>
           </td>
           <td>
-            <span style="font-size:12px;color:var(--text-muted)">${u.last_login || '尚未登录记录'}</span>
+            <span style="font-size:12.5px;color:var(--text-secondary);font-family:monospace">${u.phone || '-'}</span>
           </td>
           <td style="text-align:right">
             <div style="display:inline-flex;gap:6px">
@@ -52,6 +52,8 @@ export const UsersModule = {
     document.getElementById('userModalId').value = '';
     document.getElementById('userModalUsername').value = '';
     document.getElementById('userModalDisplayName').value = '';
+    const phoneEl = document.getElementById('userModalPhone');
+    if (phoneEl) phoneEl.value = '';
     document.getElementById('userModalPassword').value = '';
     document.getElementById('userModalPassLabel').innerText = '登录密码 * (必填)';
     document.getElementById('userModalPassword').placeholder = '输入初始登录密码';
@@ -68,6 +70,8 @@ export const UsersModule = {
     document.getElementById('userModalId').value = u.id;
     document.getElementById('userModalUsername').value = u.username || '';
     document.getElementById('userModalDisplayName').value = u.display_name || '';
+    const phoneEl = document.getElementById('userModalPhone');
+    if (phoneEl) phoneEl.value = u.phone || '';
     document.getElementById('userModalPassword').value = '';
     document.getElementById('userModalPassLabel').innerText = '修改新密码 (留空则不修改)';
     document.getElementById('userModalPassword').placeholder = '留空则保持原密码不变';
@@ -84,6 +88,7 @@ export const UsersModule = {
     const id = document.getElementById('userModalId').value;
     const username = document.getElementById('userModalUsername').value.trim();
     const displayName = document.getElementById('userModalDisplayName').value.trim();
+    const phone = document.getElementById('userModalPhone')?.value.trim() || '';
     const password = document.getElementById('userModalPassword').value.trim();
 
     if (!username) { alert('登录账号为必填项'); return; }
@@ -96,6 +101,7 @@ export const UsersModule = {
         id,
         username,
         display_name: displayName,
+        phone,
         password
       })
     }).then(r => r.json());
@@ -105,6 +111,7 @@ export const UsersModule = {
       this.loadUsers();
       if (this.state.currentUser && (!id || String(this.state.currentUser.id) === String(id))) {
         this.checkStatusAndLoadConfig();
+        this.loadCardProfile();
       }
     } else {
       alert(res.message);

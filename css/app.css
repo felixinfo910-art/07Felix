@@ -1978,7 +1978,332 @@ a {
   opacity: 0;
   transition: opacity 0.15s ease;
 }
-.renewal-title-link:hover .edit-hint-icon {
-  opacity: 0.8;
+/* ---------------- 系统设置左侧子导航工作台 ---------------- */
+.settings-workbench-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.settings-sub-nav {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  box-shadow: var(--shadow-notion);
+  position: sticky;
+  top: 70px;
+}
+
+.settings-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-sub-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.settings-sub-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.settings-sub-item.active {
+  background: var(--bg-subtle);
+  color: var(--primary-color, #2383e2);
+  font-weight: 600;
+}
+
+.settings-sub-icon {
+  font-size: 16px;
+}
+
+.settings-content-area {
+  min-width: 0;
+}
+
+.settings-sub-panel {
+  display: none;
+}
+
+.settings-sub-panel.active {
+  display: block;
+}
+
+/* ---------------- 电子名片舞台与双风格 CSS ---------------- */
+.business-card-stage {
+  padding: 24px;
+  background: var(--bg-page);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.bcard-container {
+  width: 580px;
+  max-width: 100%;
+  height: 320px;
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bcard-container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 42px rgba(0, 0, 0, 0.12);
+}
+
+/* 风格 1: 商务风格 (Business Blue 现代科技折角) */
+.bcard-business {
+  background: #ffffff;
+  color: #1a1a1a;
+  position: relative;
+  display: flex;
+}
+
+.bcard-business .bcard-left-shape {
+  width: 52%;
+  height: 100%;
+  background: #2563eb;
+  position: relative;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #ffffff;
+  z-index: 2;
+  clip-path: polygon(0 0, 88% 0, 100% 76%, 86% 100%, 0 100%);
+}
+
+.bcard-avatar-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.bcard-avatar-icon {
+  font-size: 38px;
+  color: #475569;
+}
+
+.bcard-left-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+.bcard-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.bcard-business .bcard-right-content {
+  flex: 1;
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  background: #ffffff;
+}
+
+.bcard-name {
+  font-size: 26px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: 1px;
+  line-height: 1.2;
+}
+
+.bcard-company {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.bcard-right-phone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: auto;
+  margin-bottom: 24px;
+}
+
+.bcard-dark-ribbon {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 65%;
+  height: 60px;
+  background: #0f172a;
+  z-index: 1;
+}
+
+/* 风格 2: 标准风格 (Standard Minimal 金色波纹等高线) */
+.bcard-standard {
+  background: #ffffff;
+  position: relative;
+  display: flex;
+  padding: 36px 40px;
+  justify-content: space-between;
+  align-items: center;
+  color: #1e293b;
+}
+
+.bcard-std-topo-bg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(ellipse at 100% 0%, rgba(217, 180, 114, 0.28) 0%, transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(217, 180, 114, 0.22) 0%, transparent 50%),
+    repeating-radial-gradient(circle at 100% 0%, transparent 0, transparent 20px, rgba(217, 180, 114, 0.16) 21px, transparent 22px);
+  pointer-events: none;
+}
+
+.bcard-std-left {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bcard-std-avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.bcard-std-name {
+  font-size: 24px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 1px;
+}
+
+.bcard-std-company {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.bcard-std-right {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 14.5px;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.bcard-std-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bcard-std-icon {
+  font-size: 16px;
+  opacity: 0.85;
+}
+
+/* 响应式适配：手机端设置子导航自动转顶部水平横滑 */
+@media (max-width: 768px) {
+  .settings-workbench-layout {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .settings-sub-nav {
+    position: static;
+    padding: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .settings-nav-group {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .settings-sub-item {
+    white-space: nowrap;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .bcard-container {
+    height: 220px;
+  }
+  .bcard-business .bcard-left-shape {
+    padding: 16px;
+  }
+  .bcard-avatar-wrap, .bcard-std-avatar {
+    width: 48px;
+    height: 48px;
+  }
+  .bcard-avatar-icon {
+    font-size: 26px;
+  }
+  .bcard-name, .bcard-std-name {
+    font-size: 18px;
+  }
+  .bcard-company, .bcard-std-company {
+    font-size: 11px;
+  }
+  .bcard-left-contacts, .bcard-std-right {
+    font-size: 11px;
+    gap: 6px;
+  }
+  .bcard-right-phone {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .bcard-standard {
+    padding: 20px;
+  }
 }
 

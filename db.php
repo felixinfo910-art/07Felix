@@ -3,7 +3,7 @@
 
 class Database {
     private static $pdo = null;
-    const SCHEMA_VERSION = 6; // 当前数据库结构版本号 (v6: 资产续费雷达支持完整编辑修改、快速延期与安全凭据管理)
+    const SCHEMA_VERSION = 7; // 当前数据库结构版本号 (v7: 系统设置左侧现代化选项卡导航、管理者账号中心与双风格商务/标准电子名片系统)
 
     public static function getConnection() {
         if (self::$pdo === null) {
@@ -103,6 +103,15 @@ class Database {
         try { $db->exec("ALTER TABLE renewals ADD COLUMN login_password_encrypted TEXT"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE renewals ADD COLUMN auto_login_type TEXT DEFAULT 'copy_and_jump'"); } catch (Throwable $e) {}
         try { $db->exec("ALTER TABLE renewals ADD COLUMN post_target_url TEXT DEFAULT ''"); } catch (Throwable $e) {}
+
+        // 用户电子名片字段无损增量迁移 (Card Profile)
+        try { $db->exec("ALTER TABLE admin_users ADD COLUMN phone TEXT DEFAULT ''"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE admin_users ADD COLUMN email TEXT DEFAULT ''"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE admin_users ADD COLUMN company TEXT DEFAULT ''"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE admin_users ADD COLUMN title TEXT DEFAULT ''"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE admin_users ADD COLUMN whatsapp TEXT DEFAULT ''"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE admin_users ADD COLUMN card_style TEXT DEFAULT 'business'"); } catch (Throwable $e) {}
+        try { $db->exec("ALTER TABLE admin_users ADD COLUMN avatar TEXT DEFAULT ''"); } catch (Throwable $e) {}
 
         // 网站项目跳转链接
         $db->exec("CREATE TABLE IF NOT EXISTS project_links (

@@ -1,13 +1,136 @@
 export const SettingsModule = {
   async loadConfigSettings() {
+    this.loadCardProfile();
     const res = await fetch('api.php?action=get_config').then(r => r.json());
     if (res.success) {
       const cfg = res.data;
-      document.getElementById('cfgAppTitle').value = cfg.app_title || '';
-      document.getElementById('cfgAiBaseUrl').value = cfg.ai_base_url || '';
-      document.getElementById('cfgAiModel').value = cfg.ai_model || '';
-      document.getElementById('cfgAiPrompt').value = cfg.ai_system_prompt || '';
-      document.getElementById('cfgAiKeyStatus').innerText = cfg.has_ai_key ? '✅ 已配置 API Key' : '⚠️ 尚未配置 API Key';
+      if (document.getElementById('cfgAppTitle')) document.getElementById('cfgAppTitle').value = cfg.app_title || '';
+      if (document.getElementById('cfgAiBaseUrl')) document.getElementById('cfgAiBaseUrl').value = cfg.ai_base_url || '';
+      if (document.getElementById('cfgAiModel')) document.getElementById('cfgAiModel').value = cfg.ai_model || '';
+      if (document.getElementById('cfgAiPrompt')) document.getElementById('cfgAiPrompt').value = cfg.ai_system_prompt || '';
+      if (document.getElementById('cfgAiKeyStatus')) {
+        document.getElementById('cfgAiKeyStatus').innerText = cfg.has_ai_key ? '✅ 已配置 API Key' : '⚠️ 尚未配置 API Key';
+      }
+    }
+  },
+
+  // 切换设置左侧子导航
+  switchSettingsSubTab(subTabName) {
+    document.querySelectorAll('.settings-sub-item').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.sub === subTabName);
+    });
+    document.querySelectorAll('.settings-sub-panel').forEach(panel => {
+      panel.classList.remove('active');
+    });
+    const targetPanel = document.getElementById(`settings-sub-${subTabName}`);
+    if (targetPanel) {
+      targetPanel.classList.add('active');
+    }
+    if (subTabName === 'account') {
+      this.loadUsers();
+    } else if (subTabName === 'card') {
+      this.loadCardProfile();
+    }
+  },
+
+  // 加载我的名片数据
+  async loadCardProfile() {
+    try {
+      const res = await fetch('api.php?action=get_card_profile').then(r => r.json());
+      if (res.success && res.data) {
+        const d = res.data;
+        if (document.getElementById('cardFormName')) document.getElementById('cardFormName').value = d.display_name || d.username || '何志忠';
+        if (document.getElementById('cardFormCompany')) document.getElementById('cardFormCompany').value = d.company || '拾贝管家演示企业';
+        if (document.getElementById('cardFormPhone')) document.getElementById('cardFormPhone').value = d.phone || '+86 13925521330';
+        if (document.getElementById('cardFormEmail')) document.getElementById('cardFormEmail').value = d.email || '478244551@qq.com';
+        if (document.getElementById('cardFormWhatsapp')) document.getElementById('cardFormWhatsapp').value = d.whatsapp || '+86 13925521330';
+        if (document.getElementById('cardFormTitle')) document.getElementById('cardFormTitle').value = d.title || '';
+        
+        const style = d.card_style || 'business';
+        if (document.getElementById('cardStyleSelect')) document.getElementById('cardStyleSelect').value = style;
+        this.onCardStyleChange(style);
+        this.syncCardPreview();
+      }
+    } catch (e) {
+      console.error('加载名片数据异常', e);
+    }
+  },
+
+  // 风格切换 (商务风格 / 标准风格)
+  onCardStyleChange(style) {
+    const pvBusiness = document.getElementById('cardPreviewBusiness');
+    const pvStandard = document.getElementById('cardPreviewStandard');
+    if (style === 'standard') {
+      if (pvBusiness) pvBusiness.style.display = 'none';
+      if (pvStandard) pvStandard.style.display = 'flex';
+    } else {
+      if (pvBusiness) pvBusiness.style.display = 'flex';
+      if (pvStandard) pvStandard.style.display = 'none';
+    }
+  },
+
+  // 实时同步表单输入到名片预览
+  syncCardPreview() {
+    const name = document.getElementById('cardFormName')?.value.trim() || '何志忠';
+    const company = document.getElementById('cardFormCompany')?.value.trim() || '拾贝管家演示企业';
+    const phone = document.getElementById('cardFormPhone')?.value.trim() || '+86 13925521330';
+    const email = document.getElementById('cardFormEmail')?.value.trim() || '478244551@qq.com';
+    const whatsapp = document.getElementById('cardFormWhatsapp')?.value.trim() || '+86 13925521330';
+    const title = document.getElementById('cardFormTitle')?.value.trim() || '';
+
+    // 商务风格渲染
+    if (document.getElementById('pvBusinessName')) document.getElementById('pvBusinessName').innerText = name;
+    if (document.getElementById('pvBusinessCompany')) document.getElementById('pvBusinessCompany').innerText = company;
+    if (document.getElementById('pvBusinessPhone')) document.getElementById('pvBusinessPhone').innerText = phone;
+    if (document.getElementById('pvBusinessEmail')) document.getElementById('pvBusinessEmail').innerText = email;
+    if (document.getElementById('pvBusinessWhatsapp')) document.getElementById('pvBusinessWhatsapp').innerText = whatsapp;
+    const bTitleEl = document.getElementById('pvBusinessTitle');
+    if (bTitleEl) {
+      if (title) {
+        bTitleEl.innerText = title;
+        bTitleEl.style.display = 'block';
+      } else {
+        bTitleEl.style.display = 'none';
+      }
+    }
+
+    // 标准风格渲染
+    if (document.getElementById('pvStandardName')) document.getElementById('pvStandardName').innerText = name;
+    if (document.getElementById('pvStandardCompany')) document.getElementById('pvStandardCompany').innerText = company;
+    if (document.getElementById('pvStandardPhone')) document.getElementById('pvStandardPhone').innerText = phone;
+    if (document.getElementById('pvStandardWhatsapp')) document.getElementById('pvStandardWhatsapp').innerText = whatsapp;
+    if (document.getElementById('pvStandardEmail')) document.getElementById('pvStandardEmail').innerText = email;
+  },
+
+  // 保存名片
+  async saveCardProfile() {
+    const payload = {
+      display_name: document.getElementById('cardFormName')?.value.trim() || '',
+      company: document.getElementById('cardFormCompany')?.value.trim() || '',
+      phone: document.getElementById('cardFormPhone')?.value.trim() || '',
+      email: document.getElementById('cardFormEmail')?.value.trim() || '',
+      whatsapp: document.getElementById('cardFormWhatsapp')?.value.trim() || '',
+      title: document.getElementById('cardFormTitle')?.value.trim() || '',
+      card_style: document.getElementById('cardStyleSelect')?.value || 'business'
+    };
+
+    try {
+      const res = await fetch('api.php?action=save_card_profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(r => r.json());
+
+      if (res.success) {
+        this.showToast('✅ 我的名片已成功保存！');
+        const userEl = document.getElementById('headerUserDisplayName');
+        if (userEl && payload.display_name) userEl.innerText = payload.display_name;
+        this.loadUsers();
+      } else {
+        this.showToast(res.message || '保存失败', 'error');
+      }
+    } catch (e) {
+      this.showToast('网络异常: ' + e.message, 'error');
     }
   },
 
@@ -92,7 +215,7 @@ export const SettingsModule = {
     } catch (e) {
       if (statusEl) {
         statusEl.style.color = 'var(--danger-color)';
-        statusEl.innerText = '❌ 请求异常: ' . e.message;
+        statusEl.innerText = '❌ 请求异常: ' + e.message;
       }
     } finally {
       if (btn) {

@@ -12,8 +12,12 @@
         <input type="text" id="userModalUsername" class="form-control" placeholder="如: admin 或 felix">
       </div>
       <div class="form-group">
-        <label class="form-label">展示昵称</label>
-        <input type="text" id="userModalDisplayName" class="form-control" placeholder="如: Felix (主理人)">
+        <label class="form-label">展示姓名 / 昵称 *</label>
+        <input type="text" id="userModalDisplayName" class="form-control" placeholder="如: 何志忠">
+      </div>
+      <div class="form-group">
+        <label class="form-label">联系电话 / 手机</label>
+        <input type="text" id="userModalPhone" class="form-control" placeholder="如: +86 13925521330">
       </div>
       <div class="form-group">
         <label class="form-label" id="userModalPassLabel">登录密码</label>
