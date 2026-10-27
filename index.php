@@ -743,9 +743,10 @@ $jsVer = IS_PRODUCTION ? (file_exists(__DIR__ . '/js/app.js') ? filemtime(__DIR_
         </div>
 
         <div style="background:var(--bg-subtle);border-radius:var(--radius-sm);padding:12px 14px;font-size:12.5px;line-height:1.6;color:var(--text-secondary);margin-bottom:14px">
-          <div>• <strong>当前环境</strong>：<code><?php echo htmlspecialchars(APP_ENV); ?></code> (可在根目录 <code>.env</code> 中指定 <code>APP_ENV=production</code> 或 <code>local</code>)</div>
+          <div>• <strong>宝塔项目根路径</strong>：<code>/www/wwwroot/07Felix</code></div>
+          <div>• <strong>当前运行模式</strong>：<code><?php echo htmlspecialchars(APP_ENV); ?></code> (可在根目录 <code>.env</code> 中指定 <code>APP_ENV=production</code> 或 <code>local</code>)</div>
           <div>• <strong>数据库引擎</strong>：SQLite 3 (WAL 极速并发读写已就绪，版本: <?php echo Database::SCHEMA_VERSION; ?>)</div>
-          <div>• <strong>宝塔一键热更新</strong>：服务器终端执行 <code>bash update.sh</code> 或 <code>git pull</code> 即可平滑升级</div>
+          <div>• <strong>一键热更新命令</strong>：宝塔终端进入 <code>cd /www/wwwroot/07Felix && bash update.sh</code> 即可平滑升级</div>
         </div>
 
         <div class="form-group" style="margin-bottom:0">
