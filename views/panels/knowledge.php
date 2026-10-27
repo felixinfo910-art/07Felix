@@ -5,10 +5,20 @@
           <div class="section-title">个人知识库与 AI 智能幕僚</div>
           <div class="section-subtitle">沉淀公司规章、业务 SOP、技术运维要点；支持 AI 智能问答、一键拆解杂乱想法、自动起草管理周报</div>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px" class="kb-header-actions">
           <button class="btn btn-secondary" onclick="App.sendAiMessage('parse_task')">AI 拆解任务</button>
           <button class="btn btn-secondary" onclick="App.sendAiMessage('weekly_report')">生成管理周报</button>
         </div>
+      </div>
+
+      <!-- 手机端知识库视图切换控制器 (默认纯净对话，也可切换至文档编辑) -->
+      <div class="kb-mobile-switcher">
+        <button class="kb-mobile-switch-btn active" id="btnKbMobileChat" onclick="App.switchKbMobileView('chat')">
+          <span>🤖 AI 私人幕僚</span>
+        </button>
+        <button class="kb-mobile-switch-btn" id="btnKbMobileDocs" onclick="App.switchKbMobileView('docs')">
+          <span>📚 知识文档库</span>
+        </button>
       </div>
 
       <div class="kb-workbench-container">

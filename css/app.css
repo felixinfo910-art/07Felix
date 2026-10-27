@@ -1305,8 +1305,75 @@ a {
   font-size: 18px;
 }
 
-/* 响应式断点控制 */
+/* 手机端知识库视图切换条（桌面端隐藏） */
+.kb-mobile-switcher {
+  display: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  margin-bottom: 14px;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.kb-mobile-switch-btn {
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.kb-mobile-switch-btn.active {
+  background: var(--bg-subtle);
+  color: var(--text-main);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* 响应式断点控制 - 手机端极简体验全面优化 */
 @media (max-width: 768px) {
+  /* 隐藏所有长篇大论的次要副标题，腾出珍贵手机首屏高度 */
+  .section-subtitle {
+    display: none !important;
+  }
+  .section-header {
+    margin-bottom: 12px !important;
+    gap: 8px;
+  }
+  .section-title {
+    font-size: 16px !important;
+  }
+
+  /* 顶部状态栏紧凑单行化 */
+  .top-header {
+    padding: 8px 14px !important;
+  }
+  .search-trigger-top {
+    display: none !important;
+  }
+  .page-parent, .page-divider {
+    display: none !important;
+  }
+  .page-current {
+    font-size: 14px !important;
+  }
+
+  /* 主工作区内边距紧凑适配 */
+  .main-wrapper {
+    padding: 12px 12px 85px 12px !important; /* 预留底部导航安全区 */
+  }
+
+  /* 侧边栏浮动抽屉 */
   .app-sidebar {
     position: fixed;
     top: 0;
@@ -1325,26 +1392,113 @@ a {
   .mobile-toggle-btn {
     display: block;
   }
-  .search-trigger-top {
-    display: none;
-  }
+
+  /* 底部导航栏专属打磨 */
   .mobile-tab-bar {
-    display: flex;
+    display: flex !important;
+    height: 54px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
   }
-  .main-wrapper {
-    padding: 16px;
-    padding-bottom: 80px; /* 留出底部导航空间 */
+  .mobile-tab-item {
+    flex: 1;
+    padding: 4px 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
+  .mobile-tab-icon {
+    font-size: 19px;
+    line-height: 1.1;
+  }
+
+  /* 总览大盘 KPI 网格：手机端转为紧凑双列或单列高密度指标 */
+  .kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    margin-bottom: 14px !important;
+  }
+  .kpi-card {
+    padding: 12px 14px !important;
+  }
+  .kpi-title {
+    font-size: 12px !important;
+  }
+  .kpi-value {
+    font-size: 18px !important;
+    margin: 4px 0 2px 0 !important;
+  }
+  .kpi-footer {
+    display: none !important; /* 手机端隐藏说明注释，只看数字 */
+  }
+
+  /* 常用直达：手机端横向自然滑动防换行挤压 */
+  .quick-portals-chips {
+    display: flex !important;
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .quick-portal-chip {
+    flex-shrink: 0;
+  }
+
+  /* 网站跳板 (Projects)：表格在手机端自然横向滚动，卡片视图自适应 */
   .project-cards-grid,
   .reimb-cards-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* 知识库与 AI 智能幕僚：手机端双视图切换 */
+  .kb-header-actions {
+    display: none !important; /* 手机端隐藏顶部复杂的快捷大指令 */
+  }
+  .kb-mobile-switcher {
+    display: grid !important;
   }
   .kb-workbench-container {
-    grid-template-columns: 1fr;
-    min-height: auto;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: auto !important;
+    gap: 12px !important;
   }
-  .top-header {
-    padding: 10px 16px;
+
+  /* 默认手机视图展示模式切换 */
+  .kb-workbench-container.show-docs .kb-docs-column {
+    display: flex !important;
+  }
+  .kb-workbench-container.show-docs .ai-chat-column {
+    display: none !important;
+  }
+  .kb-workbench-container.show-chat .kb-docs-column {
+    display: none !important;
+  }
+  .kb-workbench-container.show-chat .ai-chat-column {
+    display: flex !important;
+  }
+
+  /* 手机端 AI 对话窗：全高且输入栏极简 */
+  .ai-chat-box {
+    min-height: 65vh !important;
+    border-radius: var(--radius-md) !important;
+  }
+  .ai-chat-header {
+    padding: 10px 14px !important;
+  }
+  .ai-model-tag {
+    display: none !important;
+  }
+  .ai-messages-list {
+    padding: 14px !important;
+    gap: 14px !important;
+  }
+  .chat-bubble {
+    max-width: 95% !important;
+    padding: 10px 14px !important;
+    font-size: 13.5px !important;
+  }
+  .ai-input-area {
+    padding: 10px 14px !important;
   }
 
   /* 资产续费雷达移动端极简形态：隐藏多维筛选与大盘栅格，全量平铺纯净卡片 */
@@ -1360,9 +1514,6 @@ a {
   #panel-renewals .section-header {
     margin-bottom: 8px !important;
   }
-  #panel-renewals .section-subtitle {
-    display: none !important;
-  }
   .renewals-mobile-summary {
     display: flex !important;
     justify-content: space-between;
@@ -1375,6 +1526,11 @@ a {
     display: flex !important;
     flex-direction: column;
     gap: 8px;
+  }
+
+  /* 垫资报销与事务待办单列化 */
+  .reimb-cards-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 

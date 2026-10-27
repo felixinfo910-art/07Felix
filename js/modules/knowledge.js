@@ -6,8 +6,29 @@ export const KnowledgeModule = {
       this.state.knowledgeDocs = res.data;
       this.renderKnowledgeSidebar();
       this.bindAiInputEvents();
+      // 移动端默认展示 AI 对话界面
+      this.switchKbMobileView('chat');
     } catch (e) {
       console.error(e);
+    }
+  },
+
+  switchKbMobileView(view) {
+    const container = document.querySelector('.kb-workbench-container');
+    const btnChat = document.getElementById('btnKbMobileChat');
+    const btnDocs = document.getElementById('btnKbMobileDocs');
+    if (!container) return;
+
+    if (view === 'docs') {
+      container.classList.remove('show-chat');
+      container.classList.add('show-docs');
+      if (btnDocs) btnDocs.classList.add('active');
+      if (btnChat) btnChat.classList.remove('active');
+    } else {
+      container.classList.remove('show-docs');
+      container.classList.add('show-chat');
+      if (btnChat) btnChat.classList.add('active');
+      if (btnDocs) btnDocs.classList.remove('active');
     }
   },
 
