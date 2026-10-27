@@ -65,9 +65,12 @@
           <textarea id="cfgAiPrompt" class="form-control" rows="3"></textarea>
         </div>
 
-        <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap">
           <button type="button" class="btn btn-secondary btn-sm" id="btnTestAiConnection" onclick="App.testAiConnection()">
             🔌 测试 AI 连通性
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="App.saveConfigSettings()">
+            💾 保存配置
           </button>
           <span id="aiTestResultStatus" style="font-size:12px;color:var(--text-muted)"></span>
         </div>

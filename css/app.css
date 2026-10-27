@@ -463,13 +463,13 @@ a {
   font-family: monospace;
 }
 
-/* 主内容主体 */
+/* 主内容主体（宽屏与超大显示器全域自适应） */
 .main-wrapper {
   flex: 1;
-  max-width: 1400px;
+  max-width: 1920px;
   width: 100%;
   margin: 0 auto;
-  padding: 24px 28px;
+  padding: 20px 28px;
 }
 
 /* 选项卡面板隐藏切换 */
@@ -962,32 +962,73 @@ a {
   color: var(--text-muted);
 }
 
-/* 知识库与 AI 对话容器 */
-.kb-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 20px;
-  min-height: 580px;
+/* 知识库与 AI 对话工作台（针对宽屏与大显示器极致利用空间） */
+#panel-knowledge {
+  width: 100%;
 }
 
-.kb-sidebar {
+.kb-workbench-container {
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  gap: 20px;
+  min-height: calc(100vh - 165px);
+  align-items: stretch;
+}
+
+@media (min-width: 1600px) {
+  .kb-workbench-container {
+    grid-template-columns: 500px 1fr;
+    gap: 24px;
+  }
+}
+
+/* 左侧文档管理与沉淀编辑列 */
+.kb-docs-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.kb-sidebar-panel {
   background-color: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
+  max-height: 280px;
+  box-shadow: var(--shadow-notion);
+}
+
+.kb-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.kb-docs-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 4px;
 }
 
 .kb-doc-item {
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  margin-bottom: 4px;
   font-size: 13px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
 }
 
 .kb-doc-item:hover {
@@ -996,7 +1037,49 @@ a {
 
 .kb-doc-item.active {
   background-color: var(--bg-subtle);
+  border-color: var(--border-medium);
   font-weight: 600;
+}
+
+/* 文档编辑器卡片 */
+.kb-editor-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-notion);
+  min-height: 340px;
+}
+
+.kb-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.kb-editor-meta-row {
+  display: flex;
+  gap: 8px;
+}
+
+.kb-content-textarea {
+  flex: 1;
+  min-height: 220px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+/* 右侧 AI 智囊大屏深度问答对话区 */
+.ai-chat-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .ai-chat-box {
@@ -1005,64 +1088,100 @@ a {
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: calc(100vh - 165px);
+  box-shadow: var(--shadow-notion);
   overflow: hidden;
+}
+
+.ai-chat-header {
+  padding: 14px 20px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-model-tag {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-weight: 500;
 }
 
 .ai-messages-list {
   flex: 1;
-  padding: 20px;
+  padding: 24px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  background-color: var(--bg-page);
 }
 
 .chat-bubble {
-  max-width: 85%;
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  font-size: 13.5px;
-  line-height: 1.6;
+  max-width: 88%;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.7;
   white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .chat-bubble.user {
   align-self: flex-end;
-  background-color: var(--bg-subtle);
+  background-color: var(--bg-card);
   color: var(--text-main);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-medium);
+  border-bottom-right-radius: 3px;
 }
 
 .chat-bubble.ai {
   align-self: flex-start;
-  background-color: var(--tag-blue-bg);
+  background-color: var(--bg-card);
   color: var(--text-main);
-  border: 1px solid rgba(43, 116, 181, 0.15);
+  border: 1px solid var(--border-light);
+  border-left: 3px solid #2383e2;
+  border-bottom-left-radius: 3px;
 }
 
 .ai-input-area {
-  padding: 16px;
+  padding: 14px 20px;
   border-top: 1px solid var(--border-light);
   background-color: var(--bg-card);
   display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
 .ai-textarea {
-  flex: 1;
+  width: 100%;
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  padding: 10px 14px;
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
+  line-height: 1.5;
   resize: none;
   background-color: var(--bg-page);
   color: var(--text-main);
   outline: none;
+  box-sizing: border-box;
 }
 
 .ai-textarea:focus {
   border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.12);
+}
+
+.ai-send-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 /* 全局 Command Palette 模态搜索框 */
@@ -1220,8 +1339,9 @@ a {
   .reimb-cards-grid {
     grid-template-columns: 1fr;
   }
-  .kb-layout {
+  .kb-workbench-container {
     grid-template-columns: 1fr;
+    min-height: auto;
   }
   .top-header {
     padding: 10px 16px;

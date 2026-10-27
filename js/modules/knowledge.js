@@ -5,6 +5,7 @@ export const KnowledgeModule = {
       if (!res.success) return;
       this.state.knowledgeDocs = res.data;
       this.renderKnowledgeSidebar();
+      this.bindAiInputEvents();
     } catch (e) {
       console.error(e);
     }
@@ -12,20 +13,24 @@ export const KnowledgeModule = {
 
   renderKnowledgeSidebar() {
     const listEl = document.getElementById('kbDocsList');
+    const badgeEl = document.getElementById('kbDocCountBadge');
+    if (badgeEl) {
+      badgeEl.innerText = this.state.knowledgeDocs.length;
+    }
     if (!listEl) return;
 
     if (this.state.knowledgeDocs.length === 0) {
-      listEl.innerHTML = `<div style="font-size:12px;color:var(--text-muted);padding:10px">知识库暂无文档</div>`;
+      listEl.innerHTML = `<div style="font-size:12px;color:var(--text-muted);padding:14px;text-align:center">暂无文档，点击右上角写文档</div>`;
       return;
     }
 
     listEl.innerHTML = this.state.knowledgeDocs.map((doc, idx) => `
       <div class="kb-doc-item ${this.state.selectedDoc && this.state.selectedDoc.id === doc.id ? 'active' : ''}" onclick="App.selectKbDoc(${doc.id})">
-        <div>
-          <div style="font-weight:500">${doc.title}</div>
-          <div style="font-size:11px;color:var(--text-muted)">${doc.category}</div>
+        <div style="min-width:0;flex:1">
+          <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${doc.title}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${doc.category || '未分类'}</div>
         </div>
-        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); App.deleteKbDoc(${doc.id})">✕</button>
+        <button class="btn btn-sm btn-secondary" style="padding:2px 6px;margin-left:6px" onclick="event.stopPropagation(); App.deleteKbDoc(${doc.id})">✕</button>
       </div>
     `).join('');
   },
@@ -42,6 +47,8 @@ export const KnowledgeModule = {
     document.getElementById('kbEditCategory').value = doc.category;
     document.getElementById('kbEditTags').value = doc.tags || '';
     document.getElementById('kbEditContent').value = doc.content || '';
+    const titleEl = document.getElementById('kbEditorModeTitle');
+    if (titleEl) titleEl.innerText = '📝 编辑文档: ' + doc.title;
   },
 
   resetKbForm() {
@@ -52,6 +59,35 @@ export const KnowledgeModule = {
     document.getElementById('kbEditCategory').value = '业务SOP';
     document.getElementById('kbEditTags').value = '';
     document.getElementById('kbEditContent').value = '';
+    const titleEl = document.getElementById('kbEditorModeTitle');
+    if (titleEl) titleEl.innerText = '📝 起草新知识文档';
+    const titleInput = document.getElementById('kbEditTitle');
+    if (titleInput) titleInput.focus();
+  },
+
+  clearAiChatHistory() {
+    this.state.aiChatHistory = [];
+    const messagesList = document.getElementById('aiMessagesList');
+    if (messagesList) {
+      messagesList.innerHTML = `
+        <div class="chat-bubble ai">
+          对话已清屏。您可以随时提问，我将继续结合左侧知识库与工作台为您深度解答！
+        </div>
+      `;
+    }
+  },
+
+  bindAiInputEvents() {
+    const textarea = document.getElementById('aiPromptInput');
+    if (!textarea || textarea.dataset.bound === 'true') return;
+    textarea.dataset.bound = 'true';
+
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.sendAiMessage('chat');
+      }
+    });
   },
 
   async saveKbDoc() {
@@ -114,7 +150,7 @@ export const KnowledgeModule = {
     // AI 思考中占位气泡
     const aiBubble = document.createElement('div');
     aiBubble.className = 'chat-bubble ai';
-    aiBubble.innerText = '🤖 思考中...';
+    aiBubble.innerText = '🤖 幕僚思考中，请稍候...';
     messagesList.appendChild(aiBubble);
     messagesList.scrollTop = messagesList.scrollHeight;
 
